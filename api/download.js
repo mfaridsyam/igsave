@@ -15,55 +15,62 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await fetchInstagramAPI(url);
+    const cleanUrl = url.split('?')[0].replace(/\/$/, '');
+    const result = await fetchIG(cleanUrl);
     return res.status(200).json(result);
   } catch (e) {
     console.error('Error:', e.message);
-    return res.status(500).json({ error: 'Gagal mengambil media. Coba lagi.' });
+    return res.status(500).json({ error: e.message });
   }
 }
 
-async function fetchInstagramAPI(url) {
-  // Bersihkan URL dari query params
-  const cleanUrl = url.split('?')[0].replace(/\/$/, '');
-
-  const apiUrl = `https://www.tikwm.com/api/instagram?url=${encodeURIComponent(cleanUrl)}`;
-
-  const r = await fetch(apiUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Referer': 'https://www.tikwm.com/',
+async function fetchIG(url) {
+  const r = await fetch(
+    `https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com/media?url=${encodeURIComponent(url)}`,
+    {
+      headers: {
+        'x-rapidapi-host': 'instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com',
+        'x-rapidapi-key': '01d499e5bcmsh744e16d8d9765cep1dacfajsn4f64fff0f946',
+      }
     }
-  });
+  );
 
-  if (!r.ok) throw new Error('API request failed');
+  if (!r.ok) throw new Error(`RapidAPI error: ${r.status}`);
   const data = await r.json();
-  if (data.code !== 0 || !data.data) throw new Error('No data returned');
 
-  const v = data.data;
+  const items = data.data || [];
+  if (!items.length) throw new Error('Gagal mengambil media. Coba lagi.');
+
+  // Pisahkan video dan gambar
+  const videos = items.filter(item => item.isVideo);
+  const images = items.filter(item => !item.isVideo);
+
+  const videoUrl = videos[0]?.media || '';
+  const imageUrls = images.map(item => item.media).filter(Boolean);
+  const cover = items[0]?.thumb || imageUrls[0] || '';
 
   // Tentukan tipe konten
   let type = 'Post';
-  if (cleanUrl.includes('/reel')) type = 'Reel';
-  else if (cleanUrl.includes('/stories')) type = 'Story';
-  else if (v.images && v.images.length > 1) type = 'Carousel';
-  else if (v.play) type = 'Video';
-  else if (v.images?.length === 1) type = 'Foto';
+  if (url.includes('/reel')) type = 'Reel';
+  else if (url.includes('/stories')) type = 'Story';
+  else if (items.length > 1) type = 'Carousel';
+  else if (videoUrl) type = 'Video';
+  else if (imageUrls.length === 1) type = 'Foto';
 
   return {
     success: true,
     media: {
-      title: v.title || '',
-      author: v.author?.nickname || '',
-      authorUsername: v.author?.unique_id || '',
-      avatar: v.author?.avatar || '',
-      cover: v.origin_cover || v.cover || v.images?.[0] || '',
+      title: '',
+      author: '',
+      authorUsername: '',
+      avatar: '',
+      cover,
       type,
-      likes: v.digg_count || 0,
-      comments: v.comment_count || 0,
-      downloadUrl: v.play || '',
-      music: v.music_info?.play || null,
-      images: v.images || [],
+      likes: 0,
+      comments: 0,
+      downloadUrl: videoUrl,
+      music: null,
+      images: videoUrl ? [] : imageUrls,
     }
   };
 }
