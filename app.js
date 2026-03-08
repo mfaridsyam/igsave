@@ -70,7 +70,13 @@ function saveBlobAsFile(blob, filename) {
 }
 
 function proxyUrl(url, filename) {
-  return '/api/proxy?url=' + encodeURIComponent(url) + '&filename=' + encodeURIComponent(filename);
+  return '/api/proxy?url=' + encodeURIComponent(url) + '&filename=' + encodeURIComponent(filename || 'file');
+}
+
+// All image display goes through proxy to fix CORS on mobile
+function proxyImg(url, filename) {
+  if (!url) return '';
+  return proxyUrl(url, filename || 'image.jpg');
 }
 
 async function downloadVideo(btn) {
@@ -179,8 +185,10 @@ function renderImages(images) {
   images.forEach((imgUrl, i) => {
     const item = document.createElement('div');
     item.className = 'img-item';
+    // FIX: Use proxy URL for <img src> to avoid CORS block on mobile
+    const proxiedSrc = proxyImg(imgUrl, `preview_${i + 1}.jpg`);
     item.innerHTML = `
-      <img src="${imgUrl}" alt="Foto ${i + 1}" loading="lazy" onerror="this.style.display='none'"/>
+      <img src="${proxiedSrc}" alt="Foto ${i + 1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>
       <button class="img-overlay" onclick="downloadSingleImage('${imgUrl}', ${i})"><span>Unduh</span></button>
     `;
     grid.appendChild(item);
@@ -211,14 +219,41 @@ async function fetchMedia() {
     currentUsername = v.authorUsername || 'unknown';
     const ts = Date.now();
 
-    document.getElementById('resCover').src = v.cover ? '/api/proxy?url=' + encodeURIComponent(v.cover) + '&filename=cover.jpg' : '';
-    document.getElementById('resAvatar').src = v.avatar ? '/api/proxy?url=' + encodeURIComponent(v.avatar) + '&filename=avatar.jpg' : '';
+    // FIX: Route cover and avatar through proxy for mobile CORS fix
+    const coverEl = document.getElementById('resCover');
+    const avatarEl = document.getElementById('resAvatar');
+
+    if (v.cover) {
+      coverEl.src = proxyImg(v.cover, 'cover.jpg');
+      coverEl.style.display = '';
+    } else {
+      coverEl.style.display = 'none';
+    }
+
+    if (v.avatar) {
+      avatarEl.src = proxyImg(v.avatar, 'avatar.jpg');
+      avatarEl.style.display = '';
+    } else {
+      avatarEl.style.display = 'none';
+    }
+
     document.getElementById('resAuthor').textContent = v.author || '';
     document.getElementById('resHandle').textContent = v.authorUsername ? `@${v.authorUsername}` : '';
     document.getElementById('resTitle').textContent = v.title || '';
     document.getElementById('resType').textContent = v.type || '';
-    document.getElementById('resLikes').textContent = formatNum(v.likes) + ' suka';
-    document.getElementById('resComments').textContent = formatNum(v.comments) + ' komentar';
+
+    // FIX: Show likes/comments only if available, otherwise hide stats row
+    const likesEl = document.getElementById('resLikes');
+    const commentsEl = document.getElementById('resComments');
+    if (v.likes || v.comments) {
+      likesEl.textContent = formatNum(v.likes) + ' suka';
+      commentsEl.textContent = formatNum(v.comments) + ' komentar';
+      likesEl.style.display = '';
+      commentsEl.style.display = '';
+    } else {
+      likesEl.style.display = 'none';
+      commentsEl.style.display = 'none';
+    }
 
     const dlVideo = document.getElementById('dlVideoBtn');
     if (v.downloadUrl) {
