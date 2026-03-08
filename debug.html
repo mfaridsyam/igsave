@@ -84,7 +84,6 @@ function renderResults(data) {
     const badgeText = val.error ? 'ERROR' : (hasData ? '✓ ADA DATA' : '⚠ KOSONG');
 
     const pretty = JSON.stringify(val?.response ?? val, null, 2);
-    // Truncate long responses
     const truncated = pretty.length > 1500 ? pretty.slice(0, 1500) + '\n...[truncated]' : pretty;
 
     div.innerHTML = `

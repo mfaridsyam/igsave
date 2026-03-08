@@ -2,7 +2,6 @@ const RAPIDAPI_KEY = '01d499e5bcmsh744e16d8d9765cep1dacfajsn4f64fff0f946';
 const IG120_HOST = 'instagram120.p.rapidapi.com';
 const IG120_BASE = 'https://instagram120.p.rapidapi.com/api/instagram';
 
-// Also test old scraper API for stories
 const SCRAPER_HOST = 'instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
 const SCRAPER_BASE = 'https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
 
@@ -19,7 +18,6 @@ export default async function handler(req, res) {
 
   const results = {};
 
-  // Test 1: IG120 /stories - body only
   try {
     const r = await fetch(`${IG120_BASE}/stories`, {
       method: 'POST',
@@ -30,7 +28,6 @@ export default async function handler(req, res) {
     results['ig120_stories_body'] = { status: r.status, response: tryParse(text) };
   } catch (e) { results['ig120_stories_body'] = { error: e.message }; }
 
-  // Test 2: IG120 /stories - with cookie header
   try {
     const r = await fetch(`${IG120_BASE}/stories`, {
       method: 'POST',
@@ -47,7 +44,6 @@ export default async function handler(req, res) {
     results['ig120_stories_cookie'] = { status: r.status, response: tryParse(text) };
   } catch (e) { results['ig120_stories_cookie'] = { error: e.message }; }
 
-  // Test 3: IG120 /story (singular)
   try {
     const r = await fetch(`${IG120_BASE}/story`, {
       method: 'POST',
@@ -58,7 +54,6 @@ export default async function handler(req, res) {
     results['ig120_story_singular'] = { status: r.status, response: tryParse(text) };
   } catch (e) { results['ig120_story_singular'] = { error: e.message }; }
 
-  // Test 4: IG120 /highlights
   try {
     const r = await fetch(`${IG120_BASE}/highlights`, {
       method: 'POST',
@@ -69,7 +64,6 @@ export default async function handler(req, res) {
     results['ig120_highlights'] = { status: r.status, response: tryParse(text) };
   } catch (e) { results['ig120_highlights'] = { error: e.message }; }
 
-  // Test 5: Old scraper API for stories URL
   try {
     const storyUrl = `https://www.instagram.com/stories/${username}/`;
     const r = await fetch(`${SCRAPER_BASE}/scraper?url=${encodeURIComponent(storyUrl)}`, {

@@ -2,7 +2,6 @@ const RAPIDAPI_KEY = '01d499e5bcmsh744e16d8d9765cep1dacfajsn4f64fff0f946';
 const IG120_HOST = 'instagram120.p.rapidapi.com';
 const IG120_BASE = 'https://instagram120.p.rapidapi.com/api/instagram';
 
-// Old scraper API - reliable for carousel/multi-image
 const SCRAPER_HOST = 'instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
 const SCRAPER_BASE = 'https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
 
@@ -61,7 +60,6 @@ async function scraperFetch(url) {
 }
 
 async function fetchMedia(shortcode, originalUrl) {
-  // Step 1: Get main media info from IG120 mediaByShortcode
   const raw = await ig120('mediaByShortcode', { shortcode });
   const item = Array.isArray(raw) ? raw[0] : raw;
 
@@ -76,24 +74,20 @@ async function fetchMedia(shortcode, originalUrl) {
   const comments = meta.commentCount || 0;
   const cover = item.pictureUrl || '';
 
-  // Step 2: Get video URL from urls[]
   const videoEntry = urls.find(u =>
     u.extension === 'mp4' || u.name === 'MP4' ||
     (u.url && u.url.includes('.mp4'))
   );
   const videoUrl = videoEntry?.url || '';
 
-  // Step 3: For images/carousel, use scraper API which returns ALL slides
   let images = [];
   let type = 'Post';
 
   if (!videoUrl) {
-    // Use scraper API to get all carousel images
     try {
       const scraperData = await scraperFetch(originalUrl);
       const scraperItems = scraperData?.data || [];
 
-      // Filter only images (not videos)
       const imgItems = scraperItems.filter(i => !i.isVideo);
       images = imgItems.map(i => i.media).filter(Boolean);
 
@@ -104,16 +98,13 @@ async function fetchMedia(shortcode, originalUrl) {
       }
     } catch (e) {
       console.log('Scraper fallback failed:', e.message);
-      // Last resort: use cover as single image
       if (cover) images = [cover];
       type = 'Foto';
     }
   } else {
-    // It's a video/reel
     type = originalUrl.includes('/reel') ? 'Reel' : 'Video';
   }
 
-  // Step 4: Get avatar from userInfo
   let avatar = '';
   let author = username;
   if (username) {

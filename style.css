@@ -10,7 +10,6 @@
   --border-dark: #d4b8e0;
   --accent: #1a1a1a;
 
-  /* Instagram gradient colors */
   --ig-1: #f58529;
   --ig-2: #dd2a7b;
   --ig-3: #8134af;
@@ -41,7 +40,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Progress bar with Instagram gradient */
 .progress-bar {
   position: fixed;
   top: 0; left: 0;
@@ -99,7 +97,6 @@ nav {
   vertical-align: middle;
   position: relative;
   top: -2px;
-  /* logo dot can't use -webkit-text-fill-color so it shows normally */
   -webkit-text-fill-color: initial;
 }
 
@@ -202,7 +199,6 @@ h1 span {
   color: var(--text);
 }
 
-/* Instagram gradient primary button */
 .btn-primary {
   flex: 1;
   background: linear-gradient(90deg, var(--ig-2), var(--ig-3));
@@ -266,7 +262,6 @@ h1 span {
   overflow: hidden;
   background: var(--surface2);
   position: relative;
-  /* Instagram-style border */
   border: 2px solid transparent;
   background-clip: padding-box;
   box-shadow: 0 0 0 2px rgba(193,53,132,0.25);
@@ -303,7 +298,6 @@ h1 span {
   object-fit: cover;
   flex-shrink: 0;
   background: var(--surface2);
-  /* Instagram ring */
   box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--ig-2);
 }
 
@@ -525,7 +519,6 @@ footer a:hover { color: var(--text); }
   .btn-dl { min-width: unset; }
 }
 
-/* ─── STORY BUTTON ─────────────────────────────── */
 .btn-story {
   display: flex;
   align-items: center;
@@ -558,7 +551,6 @@ footer a:hover { color: var(--text); }
   font-weight: 700;
 }
 
-/* ─── MODAL ─────────────────────────────────────── */
 .modal-backdrop {
   display: none;
   position: fixed;

@@ -28,7 +28,6 @@ async function ig120(endpoint, body, sessionid) {
     'x-rapidapi-host': RAPIDAPI_HOST,
     'Content-Type': 'application/json',
   };
-  // Pass sessionid as Instagram cookie so API can authenticate
   if (sessionid) {
     headers['x-ig-sessionid'] = sessionid;
     headers['cookie'] = `sessionid=${sessionid}`;
@@ -43,16 +42,13 @@ async function ig120(endpoint, body, sessionid) {
 }
 
 async function fetchStories(username, sessionid) {
-  // Try both stories and story endpoints
   let raw = null;
   let items = [];
 
-  // Attempt 1: /stories endpoint with sessionid
   try {
     raw = await ig120('stories', { username, sessionid }, sessionid);
     console.log('stories raw:', JSON.stringify(raw).slice(0, 300));
 
-    // Try all known response shapes
     items =
       raw?.result?.items ||
       raw?.result?.reels_media?.[0]?.items ||
@@ -64,7 +60,6 @@ async function fetchStories(username, sessionid) {
     console.log('stories endpoint failed:', e.message);
   }
 
-  // Attempt 2: /story endpoint (singular)
   if (items.length === 0) {
     try {
       raw = await ig120('story', { username, sessionid }, sessionid);
@@ -114,7 +109,6 @@ async function fetchStories(username, sessionid) {
     throw new Error('Tidak ada story yang bisa diunduh dari akun ini.');
   }
 
-  // Fetch user info
   let author = username;
   let avatar = '';
   try {

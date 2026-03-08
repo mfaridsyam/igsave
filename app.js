@@ -278,12 +278,9 @@ async function fetchMedia() {
   }
 }
 
-// ─── STORY FEATURE ──────────────────────────────────────────────
-
 function openStoryModal() {
   const modal = document.getElementById('storyModal');
   modal.classList.add('active');
-  // Pre-fill sessionid from localStorage if saved
   const saved = localStorage.getItem('ig_sessionid');
   if (saved) document.getElementById('sessionidInput').value = saved;
   document.getElementById('storyUsernameInput').focus();
@@ -327,7 +324,6 @@ async function fetchStory() {
   btn.innerHTML = '<span class="spin"></span> Mencari...';
   showProgress();
 
-  // Save sessionid to localStorage for convenience
   localStorage.setItem('ig_sessionid', sessionid);
   currentStoryUsername = username;
 
@@ -418,7 +414,6 @@ async function downloadAllStories() {
     .map(s => s.url)
     .filter(Boolean);
 
-  // Try zip for images, download videos separately
   try {
     if (imageUrls.length > 0) {
       const response = await fetch('/api/zip', {
@@ -431,7 +426,6 @@ async function downloadAllStories() {
         saveBlobAsFile(blob, `${currentStoryUsername}_stories.zip`);
       }
     }
-    // Download videos one by one
     for (let i = 0; i < currentStories.length; i++) {
       const story = currentStories[i];
       if (story.isVideo && story.url) {
@@ -447,7 +441,6 @@ async function downloadAllStories() {
       }
     }
   } catch (e) {
-    // Fallback: download each individually
     for (let i = 0; i < currentStories.length; i++) {
       await downloadStory(i);
       await new Promise(r => setTimeout(r, 400));
@@ -459,7 +452,6 @@ async function downloadAllStories() {
   }
 }
 
-// Close modal when clicking backdrop
 document.addEventListener('click', e => {
   const modal = document.getElementById('storyModal');
   if (e.target === modal) closeStoryModal();
