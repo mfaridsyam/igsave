@@ -211,8 +211,8 @@ async function fetchMedia() {
     currentUsername = v.authorUsername || 'unknown';
     const ts = Date.now();
 
-    document.getElementById('resCover').src = v.cover || '';
-    document.getElementById('resAvatar').src = v.avatar || '';
+    document.getElementById('resCover').src = v.cover ? '/api/proxy?url=' + encodeURIComponent(v.cover) + '&filename=cover.jpg' : '';
+    document.getElementById('resAvatar').src = v.avatar ? '/api/proxy?url=' + encodeURIComponent(v.avatar) + '&filename=avatar.jpg' : '';
     document.getElementById('resAuthor').textContent = v.author || '';
     document.getElementById('resHandle').textContent = v.authorUsername ? `@${v.authorUsername}` : '';
     document.getElementById('resTitle').textContent = v.title || '';

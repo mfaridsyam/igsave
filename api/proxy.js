@@ -11,8 +11,8 @@ export default async function handler(req, res) {
     'fbcdn.net',
     'instagram.com',
     'scontent',
-    'snapinsta',
-    'sssgram',
+    'scontent-ber1-1',
+    'scontent-arn2-1',
   ];
   const isAllowed = allowed.some(domain => url.includes(domain));
   if (!isAllowed) {
