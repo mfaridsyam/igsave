@@ -15,8 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cleanUrl = url.split('?')[0].replace(/\/$/, '');
-    const result = await fetchIG(cleanUrl);
+    const result = await fetchIG(url);
     return res.status(200).json(result);
   } catch (e) {
     console.error('Error:', e.message);
@@ -37,7 +36,6 @@ async function fetchIG(url) {
 
   if (!r.ok) throw new Error(`RapidAPI error: ${r.status}`);
   const data = await r.json();
-
   const items = data.data || [];
   if (!items.length) throw new Error('Gagal mengambil media. Coba lagi.');
 
