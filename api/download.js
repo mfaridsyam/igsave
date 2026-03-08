@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
 async function fetchIG(url) {
   const r = await fetch(
-    `https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com/media?url=${encodeURIComponent(url)}`,
+    `https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com/?url=${encodeURIComponent(url)}`,
     {
       headers: {
         'x-rapidapi-host': 'instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com',
@@ -41,7 +41,6 @@ async function fetchIG(url) {
   const items = data.data || [];
   if (!items.length) throw new Error('Gagal mengambil media. Coba lagi.');
 
-  // Pisahkan video dan gambar
   const videos = items.filter(item => item.isVideo);
   const images = items.filter(item => !item.isVideo);
 
@@ -49,7 +48,6 @@ async function fetchIG(url) {
   const imageUrls = images.map(item => item.media).filter(Boolean);
   const cover = items[0]?.thumb || imageUrls[0] || '';
 
-  // Tentukan tipe konten
   let type = 'Post';
   if (url.includes('/reel')) type = 'Reel';
   else if (url.includes('/stories')) type = 'Story';
