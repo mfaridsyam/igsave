@@ -25,8 +25,9 @@ export default async function handler(req, res) {
 
 async function fetchIG(url) {
   const r = await fetch(
-    `https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com/?url=${encodeURIComponent(url)}`,
+    `https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com/scraper?url=${encodeURIComponent(url)}`,
     {
+      method: 'GET',
       headers: {
         'x-rapidapi-host': 'instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com',
         'x-rapidapi-key': '01d499e5bcmsh744e16d8d9765cep1dacfajsn4f64fff0f946',
