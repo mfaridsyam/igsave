@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>IGSave — Download Instagram Tanpa Watermark</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="container">
+  <nav>
+    <div class="logo">IGSave<span class="logo-dot"></span></div>
+    <span class="nav-badge">Tanpa Watermark</span>
+  </nav>
+
+  <div class="hero">
+    <h1>Download Instagram<br><span>tanpa watermark</span></h1>
+    <p class="hero-sub">Tempel link Instagram, klik unduh. Gratis selamanya.</p>
+
+    <div class="input-wrap">
+      <div class="input-row">
+        <input
+          type="text"
+          id="urlInput"
+          class="url-input"
+          placeholder="https://www.instagram.com/p/... atau /reel/..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div class="input-buttons">
+          <button class="btn-secondary" id="pasteBtn" onclick="pasteURL()">Tempel</button>
+          <button class="btn-primary" id="downloadBtn" onclick="fetchMedia()">
+            <span id="btnText">Unduh</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox">
+      <span id="errorText"></span>
+    </div>
+
+    <div class="result-card" id="resultCard">
+      <div class="result-inner">
+        <div class="result-media">
+          <div class="thumb-wrap">
+            <img id="resCover" src="" alt="Cover"/>
+            <span class="thumb-type" id="resType"></span>
+          </div>
+          <div class="result-info">
+            <div class="result-author">
+              <img id="resAvatar" class="author-avatar" src="" alt="Avatar"/>
+              <div>
+                <div class="author-name" id="resAuthor"></div>
+                <div class="author-handle" id="resHandle"></div>
+              </div>
+            </div>
+            <div class="result-title" id="resTitle"></div>
+            <div class="result-stats">
+              <span class="stat" id="resLikes"></span>
+              <span class="stat" id="resComments"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="dl-actions">
+        <button class="btn-dl btn-dl-video" id="dlVideoBtn" onclick="downloadVideo(this)" style="display:none">
+          Unduh Video
+        </button>
+        <button class="btn-dl btn-dl-audio" id="dlMusicBtn" onclick="downloadAudio(this)" style="display:none">
+          Audio
+        </button>
+      </div>
+
+      <div class="images-section" id="imagesSection" style="display:none">
+        <div class="images-header">
+          <span class="images-label">Foto dalam postingan</span>
+          <button class="btn-dl-all" onclick="downloadAllImages()">Unduh Semua</button>
+        </div>
+        <div class="images-grid" id="imagesGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🎬</div>
+      <div class="feature-val">Reels</div>
+      <div class="feature-label">Video & Reels</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🖼️</div>
+      <div class="feature-val">Foto</div>
+      <div class="feature-label">Foto & Carousel</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🆓</div>
+      <div class="feature-val">Gratis</div>
+      <div class="feature-label">Selamanya</div>
+    </div>
+  </div>
+
+  <footer>
+    IGSave &nbsp;·&nbsp; Dibuat oleh <a href="https://faridsyam.web.app" target="_blank" rel="noopener">MFaridS</a>
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
