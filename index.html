@@ -9,19 +9,15 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div class="progress-bar" id="progressBar"></div>
-
 <div class="container">
   <nav>
     <div class="logo">IGSave<span class="logo-dot"></span></div>
     <span class="nav-badge">Tanpa Watermark</span>
   </nav>
-
   <div class="hero">
     <h1>Download Instagram<br><span>tanpa watermark</span></h1>
     <p class="hero-sub">Tempel link Instagram, klik unduh. Gratis selamanya.</p>
-
     <div class="input-wrap">
       <div class="input-row">
         <input
@@ -40,11 +36,9 @@
         </div>
       </div>
     </div>
-
     <div class="error-box" id="errorBox">
       <span id="errorText"></span>
     </div>
-
     <div class="result-card" id="resultCard">
       <div class="result-inner">
         <div class="result-media">
@@ -68,9 +62,7 @@
           </div>
         </div>
       </div>
-
       <div class="divider"></div>
-
       <div class="dl-actions">
         <button class="btn-dl btn-dl-video" id="dlVideoBtn" onclick="downloadVideo(this)" style="display:none">
           Unduh Video
@@ -79,7 +71,6 @@
           Audio
         </button>
       </div>
-
       <div class="images-section" id="imagesSection" style="display:none">
         <div class="images-header">
           <span class="images-label">Foto dalam postingan</span>
@@ -88,6 +79,12 @@
         <div class="images-grid" id="imagesGrid"></div>
       </div>
     </div>
+
+    <!-- Story Button -->
+    <button class="btn-story" onclick="openStoryModal()">
+      <span class="btn-story-icon">○</span>
+      Download Story
+    </button>
   </div>
 
   <div class="features">
@@ -102,15 +99,84 @@
       <div class="feature-label">Foto & Carousel</div>
     </div>
     <div class="feature">
-      <div class="feature-icon">🆓</div>
-      <div class="feature-val">Gratis</div>
-      <div class="feature-label">Selamanya</div>
+      <div class="feature-icon">⭕</div>
+      <div class="feature-val">Story</div>
+      <div class="feature-label">Story Akun Lain</div>
     </div>
   </div>
-
   <footer>
     IGSave &nbsp;·&nbsp; Dibuat oleh <a href="https://faridsyam.web.app" target="_blank" rel="noopener">MFaridS</a>
   </footer>
+</div>
+
+<!-- Story Modal -->
+<div class="modal-backdrop" id="storyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Download Story</div>
+      <button class="modal-close" onclick="closeStoryModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">Username target</label>
+        <input
+          type="text"
+          id="storyUsernameInput"
+          class="modal-input"
+          placeholder="contoh: natgeo"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <div class="modal-field">
+        <label class="modal-label">
+          Session ID Instagram kamu
+          <button class="btn-help" onclick="toggleSessionHelp()">?</button>
+        </label>
+        <input
+          type="password"
+          id="sessionidInput"
+          class="modal-input"
+          placeholder="Paste session ID di sini..."
+          autocomplete="off"
+        />
+        <div id="sessionHelp" class="session-help" style="display:none">
+          <strong>Cara ambil Session ID:</strong><br>
+          1. Buka Instagram di browser desktop (chrome/firefox)<br>
+          2. Login ke akun Instagram kamu<br>
+          3. Tekan <strong>F12</strong> → tab <strong>Application</strong><br>
+          4. Klik <strong>Cookies</strong> → <strong>https://www.instagram.com</strong><br>
+          5. Cari baris <strong>sessionid</strong> → copy nilainya<br>
+          <br>
+          <span class="help-note">🔒 Session ID hanya disimpan di browser kamu, tidak dikirim ke server kami.</span>
+        </div>
+      </div>
+
+      <div class="story-error" id="storyError" style="display:none"></div>
+
+      <button class="btn-primary btn-fetch-story" id="fetchStoryBtn" onclick="fetchStory()">
+        Cari Story
+      </button>
+
+      <!-- Story Results -->
+      <div id="storyResult" style="display:none">
+        <div class="story-profile">
+          <img id="storyAvatar" class="author-avatar" src="" alt="Avatar"/>
+          <div>
+            <div class="author-name" id="storyAuthorName"></div>
+            <div class="author-handle" id="storyAuthorHandle"></div>
+          </div>
+        </div>
+        <div class="images-header" style="margin-top:14px">
+          <span class="images-label">Story aktif</span>
+          <button class="btn-dl-all" id="dlAllStoriesBtn" onclick="downloadAllStories()">Unduh Semua</button>
+        </div>
+        <div class="images-grid" id="storyGrid"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>
