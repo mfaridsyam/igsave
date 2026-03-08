@@ -1,6 +1,10 @@
 const RAPIDAPI_KEY = '01d499e5bcmsh744e16d8d9765cep1dacfajsn4f64fff0f946';
-const RAPIDAPI_HOST = 'instagram120.p.rapidapi.com';
-const BASE_URL = 'https://instagram120.p.rapidapi.com/api/instagram';
+const IG120_HOST = 'instagram120.p.rapidapi.com';
+const IG120_BASE = 'https://instagram120.p.rapidapi.com/api/instagram';
+
+// Old scraper API - reliable for carousel/multi-image
+const SCRAPER_HOST = 'instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
+const SCRAPER_BASE = 'https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -19,7 +23,7 @@ export default async function handler(req, res) {
   const shortcode = match[3];
 
   try {
-    const result = await fetchByShortcode(shortcode);
+    const result = await fetchMedia(shortcode, url);
     return res.status(200).json(result);
   } catch (e) {
     console.error('Download error:', e.message);
@@ -28,21 +32,36 @@ export default async function handler(req, res) {
 }
 
 async function ig120(endpoint, body) {
-  const r = await fetch(`${BASE_URL}/${endpoint}`, {
+  const r = await fetch(`${IG120_BASE}/${endpoint}`, {
     method: 'POST',
     headers: {
       'x-rapidapi-key': RAPIDAPI_KEY,
-      'x-rapidapi-host': RAPIDAPI_HOST,
+      'x-rapidapi-host': IG120_HOST,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`API error ${r.status}`);
+  if (!r.ok) throw new Error(`IG120 error ${r.status}`);
   return r.json();
 }
 
-async function fetchByShortcode(shortcode) {
-  // Response is an array: rawResponse[0]
+async function scraperFetch(url) {
+  const r = await fetch(
+    `${SCRAPER_BASE}/scraper?url=${encodeURIComponent(url)}`,
+    {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': SCRAPER_HOST,
+      },
+    }
+  );
+  if (!r.ok) throw new Error(`Scraper error ${r.status}`);
+  return r.json();
+}
+
+async function fetchMedia(shortcode, originalUrl) {
+  // Step 1: Get main media info from IG120 mediaByShortcode
   const raw = await ig120('mediaByShortcode', { shortcode });
   const item = Array.isArray(raw) ? raw[0] : raw;
 
@@ -51,52 +70,60 @@ async function fetchByShortcode(shortcode) {
   const meta = item.meta || {};
   const urls = item.urls || [];
 
-  // Video URL - first mp4 in urls[]
-  const videoEntry = urls.find(u => u.extension === 'mp4' || u.name === 'MP4');
-  const videoUrl = videoEntry?.url || '';
-
-  // Cover/thumbnail
-  const cover = item.pictureUrl || '';
-
-  // Caption & stats from meta
-  const title = meta.title || '';
   const username = meta.username || '';
+  const title = meta.title || '';
   const likes = meta.likeCount || 0;
   const comments = meta.commentCount || 0;
+  const cover = item.pictureUrl || '';
 
-  // Determine type
-  let type = 'Post';
-  if (videoUrl) type = 'Video';
-  if (meta.sourceUrl?.includes('/reel')) type = 'Reel';
-
-  // For carousel: check if urls has multiple image entries
-  const imageEntries = urls.filter(u =>
-    u.extension === 'jpg' || u.extension === 'jpeg' ||
-    u.extension === 'png' || u.name === 'JPG' || u.name === 'PNG'
+  // Step 2: Get video URL from urls[]
+  const videoEntry = urls.find(u =>
+    u.extension === 'mp4' || u.name === 'MP4' ||
+    (u.url && u.url.includes('.mp4'))
   );
-  let images = imageEntries.map(u => u.url).filter(Boolean);
+  const videoUrl = videoEntry?.url || '';
 
-  // If no separate images but we have a cover and no video = single photo
-  if (!videoUrl && images.length === 0 && cover) {
-    images = [cover];
-    type = 'Foto';
+  // Step 3: For images/carousel, use scraper API which returns ALL slides
+  let images = [];
+  let type = 'Post';
+
+  if (!videoUrl) {
+    // Use scraper API to get all carousel images
+    try {
+      const scraperData = await scraperFetch(originalUrl);
+      const scraperItems = scraperData?.data || [];
+
+      // Filter only images (not videos)
+      const imgItems = scraperItems.filter(i => !i.isVideo);
+      images = imgItems.map(i => i.media).filter(Boolean);
+
+      if (scraperItems.length > 1) {
+        type = 'Carousel';
+      } else if (images.length === 1) {
+        type = 'Foto';
+      }
+    } catch (e) {
+      console.log('Scraper fallback failed:', e.message);
+      // Last resort: use cover as single image
+      if (cover) images = [cover];
+      type = 'Foto';
+    }
+  } else {
+    // It's a video/reel
+    type = originalUrl.includes('/reel') ? 'Reel' : 'Video';
   }
 
-  if (images.length > 1) type = 'Carousel';
-
-  // Fetch user avatar via userInfo
+  // Step 4: Get avatar from userInfo
   let avatar = '';
-  let author = '';
+  let author = username;
   if (username) {
     try {
       const uRaw = await ig120('userInfo', { username });
-      // Response: { result: [ { user: { profile_pic_url, full_name, ... } } ] }
       const userResult = uRaw?.result?.[0]?.user || uRaw?.result?.user || {};
       avatar = userResult.profile_pic_url || userResult.hd_profile_pic_url_info?.url || '';
       author = userResult.full_name || username;
     } catch (e) {
       console.log('userInfo failed:', e.message);
-      author = username;
     }
   }
 
