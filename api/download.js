@@ -22,12 +22,12 @@ export default async function handler(req, res) {
     const result = await fetchByShortcode(shortcode);
     return res.status(200).json(result);
   } catch (e) {
-    console.error('Error:', e.message);
+    console.error('Download error:', e.message);
     return res.status(500).json({ error: e.message });
   }
 }
 
-async function ig120Post(endpoint, body) {
+async function ig120(endpoint, body) {
   const r = await fetch(`${BASE_URL}/${endpoint}`, {
     method: 'POST',
     headers: {
@@ -37,93 +37,73 @@ async function ig120Post(endpoint, body) {
     },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`Instagram120 error: ${r.status}`);
+  if (!r.ok) throw new Error(`API error ${r.status}`);
   return r.json();
 }
 
 async function fetchByShortcode(shortcode) {
-  const data = await ig120Post('mediaByShortcode', { shortcode });
+  // Response is an array: rawResponse[0]
+  const raw = await ig120('mediaByShortcode', { shortcode });
+  const item = Array.isArray(raw) ? raw[0] : raw;
 
-  const media = data?.data || data?.media || data;
-  if (!media) throw new Error('Gagal mengambil media. Pastikan link benar dan akun tidak privat.');
+  if (!item) throw new Error('Gagal mengambil media. Pastikan link benar dan akun tidak privat.');
 
-  // Extract owner/user info
-  const owner = media.owner || media.user || {};
-  const username = owner.username || '';
-  const author = owner.full_name || username || '';
-  let avatar = owner.profile_pic_url || '';
-  const likes = media.like_count || media.edge_liked_by?.count || 0;
-  const comments = media.comment_count || media.edge_media_to_comment?.count || 0;
-  const caption =
-    media.caption?.text ||
-    media.edge_media_to_caption?.edges?.[0]?.node?.text ||
-    '';
+  const meta = item.meta || {};
+  const urls = item.urls || [];
 
-  // Determine media type
-  const mediaType = media.media_type || media.__typename || '';
+  // Video URL - first mp4 in urls[]
+  const videoEntry = urls.find(u => u.extension === 'mp4' || u.name === 'MP4');
+  const videoUrl = videoEntry?.url || '';
+
+  // Cover/thumbnail
+  const cover = item.pictureUrl || '';
+
+  // Caption & stats from meta
+  const title = meta.title || '';
+  const username = meta.username || '';
+  const likes = meta.likeCount || 0;
+  const comments = meta.commentCount || 0;
+
+  // Determine type
   let type = 'Post';
-  if (mediaType === 8 || mediaType === 'GraphSidecar') type = 'Carousel';
-  else if (mediaType === 2 || mediaType === 'GraphVideo') type = 'Video';
-  else if (mediaType === 1 || mediaType === 'GraphImage') type = 'Foto';
+  if (videoUrl) type = 'Video';
+  if (meta.sourceUrl?.includes('/reel')) type = 'Reel';
 
-  let videoUrl = media.video_url || '';
-  let cover =
-    media.thumbnail_url ||
-    media.display_url ||
-    media.image_versions2?.candidates?.[0]?.url ||
-    '';
+  // For carousel: check if urls has multiple image entries
+  const imageEntries = urls.filter(u =>
+    u.extension === 'jpg' || u.extension === 'jpeg' ||
+    u.extension === 'png' || u.name === 'JPG' || u.name === 'PNG'
+  );
+  let images = imageEntries.map(u => u.url).filter(Boolean);
 
-  // Extract images for carousel
-  let images = [];
-  const sidecar =
-    media.edge_media_to_carousel_media?.edges ||
-    media.carousel_media ||
-    [];
-
-  if (sidecar.length > 0) {
-    type = 'Carousel';
-    sidecar.forEach(edge => {
-      const node = edge.node || edge;
-      if (node.video_url) {
-        if (!videoUrl) videoUrl = node.video_url;
-      } else {
-        const imgUrl =
-          node.display_url ||
-          node.image_versions2?.candidates?.[0]?.url ||
-          '';
-        if (imgUrl) images.push(imgUrl);
-      }
-    });
-    if (!cover)
-      cover =
-        sidecar[0]?.node?.display_url ||
-        sidecar[0]?.display_url ||
-        '';
-  }
-
-  // Single image fallback
+  // If no separate images but we have a cover and no video = single photo
   if (!videoUrl && images.length === 0 && cover) {
     images = [cover];
+    type = 'Foto';
   }
 
-  // Fetch avatar via userInfo if missing
-  if (!avatar && username) {
+  if (images.length > 1) type = 'Carousel';
+
+  // Fetch user avatar via userInfo
+  let avatar = '';
+  let author = '';
+  if (username) {
     try {
-      const userInfo = await ig120Post('userInfo', { username });
-      const u = userInfo?.data || userInfo?.user || userInfo;
-      avatar =
-        u?.profile_pic_url ||
-        u?.hd_profile_pic_url_info?.url ||
-        '';
+      const uRaw = await ig120('userInfo', { username });
+      // Response: { result: [ { user: { profile_pic_url, full_name, ... } } ] }
+      const userResult = uRaw?.result?.[0]?.user || uRaw?.result?.user || {};
+      avatar = userResult.profile_pic_url || userResult.hd_profile_pic_url_info?.url || '';
+      author = userResult.full_name || username;
     } catch (e) {
-      console.log('userInfo fetch failed:', e.message);
+      console.log('userInfo failed:', e.message);
+      author = username;
     }
   }
 
   return {
     success: true,
     media: {
-      title: caption,
+      title,
       author,
       authorUsername: username,
       avatar,

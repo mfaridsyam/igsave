@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   const { username, sessionid } = req.body;
   if (!username) return res.status(400).json({ error: 'Username diperlukan.' });
-  if (!sessionid) return res.status(400).json({ error: 'Session ID diperlukan untuk mengakses story.' });
+  if (!sessionid) return res.status(400).json({ error: 'Session ID diperlukan.' });
 
   try {
     const result = await fetchStories(username, sessionid);
@@ -22,47 +22,80 @@ export default async function handler(req, res) {
   }
 }
 
-async function fetchStories(username, sessionid) {
-  // Fetch stories using instagram120 with sessionid as cookie
-  const r = await fetch(`${BASE_URL}/stories`, {
+async function ig120(endpoint, body, sessionid) {
+  const headers = {
+    'x-rapidapi-key': RAPIDAPI_KEY,
+    'x-rapidapi-host': RAPIDAPI_HOST,
+    'Content-Type': 'application/json',
+  };
+  // Pass sessionid as Instagram cookie so API can authenticate
+  if (sessionid) {
+    headers['x-ig-sessionid'] = sessionid;
+    headers['cookie'] = `sessionid=${sessionid}`;
+  }
+  const r = await fetch(`${BASE_URL}/${endpoint}`, {
     method: 'POST',
-    headers: {
-      'x-rapidapi-key': RAPIDAPI_KEY,
-      'x-rapidapi-host': RAPIDAPI_HOST,
-      'Content-Type': 'application/json',
-      // Pass sessionid so API can access private/story content
-      'x-ig-sessionid': sessionid,
-    },
-    body: JSON.stringify({ username, sessionid }),
+    headers,
+    body: JSON.stringify(body),
   });
+  if (!r.ok) throw new Error(`API error ${r.status}`);
+  return r.json();
+}
 
-  if (!r.ok) {
-    const errText = await r.text();
-    console.error('Stories API response:', errText);
-    throw new Error(`Gagal mengambil story. Pastikan Session ID valid dan akun tidak privat.`);
+async function fetchStories(username, sessionid) {
+  // Try both stories and story endpoints
+  let raw = null;
+  let items = [];
+
+  // Attempt 1: /stories endpoint with sessionid
+  try {
+    raw = await ig120('stories', { username, sessionid }, sessionid);
+    console.log('stories raw:', JSON.stringify(raw).slice(0, 300));
+
+    // Try all known response shapes
+    items =
+      raw?.result?.items ||
+      raw?.result?.reels_media?.[0]?.items ||
+      (Array.isArray(raw?.result) ? raw.result : []) ||
+      raw?.items ||
+      raw?.data?.items ||
+      [];
+  } catch (e) {
+    console.log('stories endpoint failed:', e.message);
   }
 
-  const data = await r.json();
-
-  // Handle various response shapes from instagram120
-  const items =
-    data?.data?.items ||
-    data?.items ||
-    data?.reels_media?.[0]?.items ||
-    data?.data ||
-    [];
+  // Attempt 2: /story endpoint (singular)
+  if (items.length === 0) {
+    try {
+      raw = await ig120('story', { username, sessionid }, sessionid);
+      console.log('story raw:', JSON.stringify(raw).slice(0, 300));
+      items =
+        raw?.result?.items ||
+        raw?.result?.reels_media?.[0]?.items ||
+        (Array.isArray(raw?.result) ? raw.result : []) ||
+        raw?.items ||
+        raw?.data?.items ||
+        [];
+    } catch (e) {
+      console.log('story endpoint failed:', e.message);
+    }
+  }
 
   if (!items || items.length === 0) {
-    throw new Error('Tidak ada story aktif dari akun ini, atau Session ID tidak valid.');
+    throw new Error(
+      'Tidak ada story aktif, atau Session ID tidak memiliki akses. ' +
+      'Pastikan Session ID masih valid dan kamu mengikuti akun tersebut jika privat.'
+    );
   }
 
   const stories = items.map((item, i) => {
-    const isVideo = item.media_type === 2 || !!item.video_versions;
+    const isVideo = item.media_type === 2 || !!item.video_versions?.length || !!item.video_url;
     const videoUrl = item.video_versions?.[0]?.url || item.video_url || '';
     const imageUrl =
       item.image_versions2?.candidates?.[0]?.url ||
       item.display_url ||
       item.thumbnail_url ||
+      item.pictureUrl ||
       '';
     const timestamp = item.taken_at
       ? new Date(item.taken_at * 1000).toLocaleString('id-ID')
@@ -72,31 +105,23 @@ async function fetchStories(username, sessionid) {
       id: item.id || i,
       isVideo,
       url: isVideo ? videoUrl : imageUrl,
-      thumb: imageUrl,
+      thumb: imageUrl || (isVideo ? '' : imageUrl),
       timestamp,
     };
-  });
+  }).filter(s => s.url);
 
-  // Fetch user info for avatar
-  let userInfo = { author: username, avatar: '' };
+  if (stories.length === 0) {
+    throw new Error('Tidak ada story yang bisa diunduh dari akun ini.');
+  }
+
+  // Fetch user info
+  let author = username;
+  let avatar = '';
   try {
-    const uRes = await fetch(`${BASE_URL}/userInfo`, {
-      method: 'POST',
-      headers: {
-        'x-rapidapi-key': RAPIDAPI_KEY,
-        'x-rapidapi-host': RAPIDAPI_HOST,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username }),
-    });
-    if (uRes.ok) {
-      const uData = await uRes.json();
-      const u = uData?.data || uData?.user || uData;
-      userInfo = {
-        author: u?.full_name || username,
-        avatar: u?.profile_pic_url || u?.hd_profile_pic_url_info?.url || '',
-      };
-    }
+    const uRaw = await ig120('userInfo', { username });
+    const userResult = uRaw?.result?.[0]?.user || uRaw?.result?.user || {};
+    author = userResult.full_name || username;
+    avatar = userResult.profile_pic_url || '';
   } catch (e) {
     console.log('userInfo failed:', e.message);
   }
@@ -104,8 +129,8 @@ async function fetchStories(username, sessionid) {
   return {
     success: true,
     username,
-    author: userInfo.author,
-    avatar: userInfo.avatar,
+    author,
+    avatar,
     stories,
   };
 }
