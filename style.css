@@ -713,3 +713,346 @@ footer a:hover { color: var(--text); }
   padding: 12px 0 0;
   border-top: 1px solid var(--border);
 }
+
+/* ─── BUTTON RADIUS FIX ─────────────────────────── */
+.btn-secondary {
+  border-radius: 0 0 0 calc(var(--radius) - 4px);
+}
+.btn-primary {
+  border-radius: 0 0 calc(var(--radius) - 4px) 0;
+}
+
+/* ─── STORY / HIGHLIGHT TABS ────────────────────── */
+.sh-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.sh-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Sora', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.sh-tab:hover {
+  border-color: var(--border-dark);
+  color: var(--text);
+}
+
+.sh-tab.active {
+  border-color: var(--accent-ig);
+  color: var(--accent-ig);
+  background: var(--accent-ig-light);
+}
+
+.sh-tab-icon {
+  font-size: 1rem;
+  background: linear-gradient(135deg, var(--ig-1), var(--ig-2), var(--ig-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+/* ─── STORY / HIGHLIGHT SECTION ─────────────────── */
+.sh-section {
+  margin-top: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 14px;
+  animation: fadeUp 0.22s ease;
+}
+
+.sh-input-row {
+  display: flex;
+  gap: 0;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sh-input-row:focus-within {
+  border-color: var(--border-dark);
+  box-shadow: 0 0 0 3px rgba(193,53,132,0.07);
+}
+
+.sh-input {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 11px 13px !important;
+}
+
+.sh-btn {
+  border-radius: 0 calc(var(--radius-sm) - 2px) calc(var(--radius-sm) - 2px) 0 !important;
+  padding: 11px 18px;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.sh-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+
+.story-error {
+  font-size: 0.8rem;
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 13px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+/* ─── HIGHLIGHT LIST ────────────────────────────── */
+.highlight-item {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.highlight-item:hover {
+  border-color: var(--border-dark);
+}
+
+.highlight-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  cursor: pointer;
+  background: var(--surface);
+  transition: background 0.15s;
+}
+
+.highlight-header:hover {
+  background: var(--surface2);
+}
+
+.highlight-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface2);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--ig-2);
+}
+
+.highlight-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.highlight-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.highlight-count {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.highlight-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.highlight-item.open .highlight-arrow {
+  transform: rotate(90deg);
+}
+
+.highlight-body {
+  display: none;
+  padding: 0 14px 14px;
+  background: var(--surface);
+}
+
+.highlight-item.open .highlight-body {
+  display: block;
+}
+
+.highlight-dl-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+/* ─── HOW TO USE SECTION ─────────────────────────── */
+.howto-section {
+  margin: 44px 0 0;
+  padding-top: 36px;
+  border-top: 1px solid var(--border);
+}
+
+.howto-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.howto-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.howto-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.howto-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.step-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ig-2), var(--ig-3));
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.step-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.howto-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.howto-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 13px;
+}
+
+.howto-card-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+
+.howto-card-desc {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ─── PWA INSTALL BANNER ─────────────────────────── */
+.pwa-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--accent-ig-light);
+  border: 1px solid rgba(193,53,132,0.2);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  margin-bottom: 16px;
+  animation: fadeUp 0.3s ease;
+}
+
+.pwa-banner.show {
+  display: flex;
+}
+
+.pwa-banner-text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.pwa-banner-text strong {
+  color: var(--accent-ig);
+}
+
+.btn-pwa-install {
+  background: linear-gradient(90deg, var(--ig-2), var(--ig-3));
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: 'Sora', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-pwa-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .howto-cards { grid-template-columns: 1fr; }
+  .sh-tabs { flex-direction: row; }
+}

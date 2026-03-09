@@ -1,3 +1,14 @@
+// ─── DISABLE RIGHT CLICK & INSPECT ──────────────────────────────
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  if (
+    e.key === 'F12' ||
+    (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key)) ||
+    (e.ctrlKey && e.key === 'U')
+  ) { e.preventDefault(); return false; }
+});
+
+// ─── GLOBALS ────────────────────────────────────────────────────
 const urlInput = document.getElementById('urlInput');
 const downloadBtn = document.getElementById('downloadBtn');
 const errorBox = document.getElementById('errorBox');
@@ -8,17 +19,60 @@ let currentImages = [];
 let currentUsername = 'unknown';
 let currentStories = [];
 let currentStoryUsername = '';
+let currentHighlights = [];
+let currentHighlightItems = {};
+let deferredPrompt = null;
 
+// ─── PWA ────────────────────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('pwaBanner');
+  if (banner) banner.classList.add('show');
+});
+
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    dismissPWA();
+  });
+}
+
+function dismissPWA() {
+  const banner = document.getElementById('pwaBanner');
+  if (banner) banner.classList.remove('show');
+}
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+// ─── TAB SWITCHING ───────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('tabStory').classList.toggle('active', tab === 'story');
+  document.getElementById('tabHighlight').classList.toggle('active', tab === 'highlight');
+  document.getElementById('sectionStory').style.display = tab === 'story' ? 'block' : 'none';
+  document.getElementById('sectionHighlight').style.display = tab === 'highlight' ? 'block' : 'none';
+}
+
+// ─── UTILITY ────────────────────────────────────────────────────
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchMedia(); });
 urlInput.addEventListener('input', updatePasteBtn);
+document.getElementById('storyUsernameInput').addEventListener('keydown', e => { if (e.key === 'Enter') fetchStory(); });
+document.getElementById('highlightUsernameInput').addEventListener('keydown', e => { if (e.key === 'Enter') fetchHighlight(); });
 
 function updatePasteBtn() {
   const btn = document.getElementById('pasteBtn');
   if (urlInput.value.trim()) {
-    btn.textContent = 'Hapus';
+    btn.textContent = 'Clear';
     btn.onclick = clearURL;
   } else {
-    btn.textContent = 'Tempel';
+    btn.textContent = 'Paste';
     btn.onclick = pasteURL;
   }
 }
@@ -29,9 +83,7 @@ async function pasteURL() {
     urlInput.value = text;
     updatePasteBtn();
     urlInput.focus();
-  } catch (e) {
-    urlInput.focus();
-  }
+  } catch (e) { urlInput.focus(); }
 }
 
 function clearURL() {
@@ -80,93 +132,72 @@ function proxyImg(url, filename) {
   return proxyUrl(url, filename || 'image.jpg');
 }
 
+// ─── DOWNLOAD HELPERS ───────────────────────────────────────────
 async function downloadVideo(btn) {
   const url = btn.dataset.url;
   const filename = btn.dataset.filename || 'igsave_video.mp4';
   if (!url) return;
-  const origText = btn.innerHTML;
+  const orig = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Mengunduh...';
+  btn.innerHTML = '<span class="spin"></span> Downloading...';
   showProgress();
   try {
-    const response = await fetch(proxyUrl(url, filename));
-    if (!response.ok) throw new Error('Gagal mengunduh video.');
-    const blob = await response.blob();
-    saveBlobAsFile(blob, filename);
-  } catch (e) {
-    window.open(proxyUrl(url, filename), '_blank');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = origText;
-    hideProgress();
-  }
+    const r = await fetch(proxyUrl(url, filename));
+    if (!r.ok) throw new Error();
+    saveBlobAsFile(await r.blob(), filename);
+  } catch { window.open(proxyUrl(url, filename), '_blank'); }
+  finally { btn.disabled = false; btn.innerHTML = orig; hideProgress(); }
 }
 
 async function downloadAudio(btn) {
   const url = btn.dataset.url;
   const filename = btn.dataset.filename || 'igsave_audio.mp3';
   if (!url) return;
-  const origText = btn.innerHTML;
+  const orig = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span>';
   showProgress();
   try {
-    const response = await fetch(proxyUrl(url, filename));
-    if (!response.ok) throw new Error('Gagal mengunduh audio.');
-    const blob = await response.blob();
-    saveBlobAsFile(blob, filename);
-  } catch (e) {
-    window.open(proxyUrl(url, filename), '_blank');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = origText;
-    hideProgress();
-  }
+    const r = await fetch(proxyUrl(url, filename));
+    if (!r.ok) throw new Error();
+    saveBlobAsFile(await r.blob(), filename);
+  } catch { window.open(proxyUrl(url, filename), '_blank'); }
+  finally { btn.disabled = false; btn.innerHTML = orig; hideProgress(); }
 }
 
-async function downloadSingleImage(url, index) {
-  const filename = `${currentUsername}_image${index + 1}.jpg`;
+async function downloadSingleImage(url, index, prefix) {
+  const uname = prefix || currentUsername;
+  const filename = `${uname}_image${index + 1}.jpg`;
   showProgress();
   try {
-    const response = await fetch(proxyUrl(url, filename));
-    const blob = await response.blob();
-    saveBlobAsFile(blob, filename);
-  } catch (e) {
-    window.open(proxyUrl(url, filename), '_blank');
-  } finally {
-    hideProgress();
-  }
+    const r = await fetch(proxyUrl(url, filename));
+    saveBlobAsFile(await r.blob(), filename);
+  } catch { window.open(proxyUrl(url, filename), '_blank'); }
+  finally { hideProgress(); }
 }
 
 async function downloadAllImages() {
   if (!currentImages.length) return;
-  const btn = document.querySelector('.btn-dl-all');
-  const origText = btn ? btn.textContent : '';
-  if (btn) { btn.textContent = 'Menyiapkan...'; btn.disabled = true; }
+  const btn = document.querySelector('#imagesSection .btn-dl-all');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Preparing...'; btn.disabled = true; }
   showProgress();
   try {
-    const response = await fetch('/api/zip', {
+    const r = await fetch('/api/zip', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ images: currentImages, username: currentUsername })
     });
-    if (!response.ok) throw new Error('Gagal membuat ZIP');
-    const blob = await response.blob();
-    saveBlobAsFile(blob, `${currentUsername}_images.zip`);
-  } catch (e) {
+    if (!r.ok) throw new Error();
+    saveBlobAsFile(await r.blob(), `${currentUsername}_images.zip`);
+  } catch {
     for (let i = 0; i < currentImages.length; i++) {
       await new Promise(r => setTimeout(r, 500));
-      try {
-        const filename = `${currentUsername}_image${i + 1}.jpg`;
-        const r = await fetch(proxyUrl(currentImages[i], filename));
-        const bl = await r.blob();
-        saveBlobAsFile(bl, filename);
-      } catch {
-        window.open(currentImages[i], '_blank');
-      }
+      try { saveBlobAsFile(await (await fetch(proxyUrl(currentImages[i], `${currentUsername}_image${i+1}.jpg`))).blob(), `${currentUsername}_image${i+1}.jpg`); }
+      catch { window.open(currentImages[i], '_blank'); }
     }
   } finally {
-    if (btn) { btn.textContent = origText; btn.disabled = false; }
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
     hideProgress();
   }
 }
@@ -174,31 +205,29 @@ async function downloadAllImages() {
 function renderImages(images) {
   const section = document.getElementById('imagesSection');
   const grid = document.getElementById('imagesGrid');
-  if (!images || images.length === 0) { section.style.display = 'none'; return; }
+  if (!images || !images.length) { section.style.display = 'none'; return; }
   currentImages = images;
   grid.innerHTML = '';
   images.forEach((imgUrl, i) => {
     const item = document.createElement('div');
     item.className = 'img-item';
-    const proxiedSrc = proxyImg(imgUrl, `preview_${i + 1}.jpg`);
     item.innerHTML = `
-      <img src="${proxiedSrc}" alt="Foto ${i + 1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>
-      <button class="img-overlay" onclick="downloadSingleImage('${imgUrl}', ${i})"><span>Unduh</span></button>
+      <img src="${proxyImg(imgUrl, `preview_${i+1}.jpg`)}" alt="Photo ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>
+      <button class="img-overlay" onclick="downloadSingleImage('${imgUrl}',${i})"><span>Save</span></button>
     `;
     grid.appendChild(item);
   });
   section.style.display = 'block';
 }
 
+// ─── MAIN DOWNLOAD ──────────────────────────────────────────────
 async function fetchMedia() {
   const url = urlInput.value.trim();
   if (!url) { urlInput.focus(); return; }
-
   resetUI();
   downloadBtn.disabled = true;
   document.getElementById('btnText').innerHTML = '<span class="spin"></span>';
   showProgress();
-
   try {
     const res = await fetch('/api/download', {
       method: 'POST',
@@ -206,29 +235,15 @@ async function fetchMedia() {
       body: JSON.stringify({ url })
     });
     const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengambil media.');
-
+    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch media.');
     const v = data.media;
     currentUsername = v.authorUsername || 'unknown';
     const ts = Date.now();
 
-    const coverEl = document.getElementById('resCover');
-    const avatarEl = document.getElementById('resAvatar');
-
-    if (v.cover) {
-      coverEl.src = proxyImg(v.cover, 'cover.jpg');
-      coverEl.style.display = '';
-    } else {
-      coverEl.style.display = 'none';
-    }
-
-    if (v.avatar) {
-      avatarEl.src = proxyImg(v.avatar, 'avatar.jpg');
-      avatarEl.style.display = '';
-    } else {
-      avatarEl.style.display = 'none';
-    }
-
+    document.getElementById('resCover').src = v.cover ? proxyImg(v.cover, 'cover.jpg') : '';
+    document.getElementById('resCover').style.display = v.cover ? '' : 'none';
+    document.getElementById('resAvatar').src = v.avatar ? proxyImg(v.avatar, 'avatar.jpg') : '';
+    document.getElementById('resAvatar').style.display = v.avatar ? '' : 'none';
     document.getElementById('resAuthor').textContent = v.author || '';
     document.getElementById('resHandle').textContent = v.authorUsername ? `@${v.authorUsername}` : '';
     document.getElementById('resTitle').textContent = v.title || '';
@@ -237,222 +252,268 @@ async function fetchMedia() {
     const likesEl = document.getElementById('resLikes');
     const commentsEl = document.getElementById('resComments');
     if (v.likes || v.comments) {
-      likesEl.textContent = formatNum(v.likes) + ' suka';
-      commentsEl.textContent = formatNum(v.comments) + ' komentar';
-      likesEl.style.display = '';
-      commentsEl.style.display = '';
+      likesEl.textContent = formatNum(v.likes) + ' likes';
+      commentsEl.textContent = formatNum(v.comments) + ' comments';
+      likesEl.style.display = commentsEl.style.display = '';
     } else {
-      likesEl.style.display = 'none';
-      commentsEl.style.display = 'none';
+      likesEl.style.display = commentsEl.style.display = 'none';
     }
 
     const dlVideo = document.getElementById('dlVideoBtn');
-    if (v.downloadUrl) {
-      dlVideo.dataset.url = v.downloadUrl;
-      dlVideo.dataset.filename = `${currentUsername}_${ts}.mp4`;
-      dlVideo.style.display = 'flex';
-    } else {
-      dlVideo.style.display = 'none';
-    }
+    dlVideo.style.display = v.downloadUrl ? 'flex' : 'none';
+    if (v.downloadUrl) { dlVideo.dataset.url = v.downloadUrl; dlVideo.dataset.filename = `${currentUsername}_${ts}.mp4`; }
 
     const dlMusic = document.getElementById('dlMusicBtn');
-    if (v.music) {
-      dlMusic.dataset.url = v.music;
-      dlMusic.dataset.filename = `${currentUsername}_audio_${ts}.mp3`;
-      dlMusic.textContent = 'Audio';
-      dlMusic.style.display = 'flex';
-    } else {
-      dlMusic.style.display = 'none';
-    }
+    dlMusic.style.display = v.music ? 'flex' : 'none';
+    if (v.music) { dlMusic.dataset.url = v.music; dlMusic.dataset.filename = `${currentUsername}_audio_${ts}.mp3`; }
 
     renderImages(v.images || []);
     resultCard.classList.add('active');
-
   } catch (err) {
     errorBox.classList.add('active');
-    document.getElementById('errorText').textContent = err.message || 'Terjadi kesalahan. Coba lagi.';
+    document.getElementById('errorText').textContent = err.message || 'Something went wrong. Try again.';
   } finally {
     downloadBtn.disabled = false;
-    document.getElementById('btnText').textContent = 'Unduh';
+    document.getElementById('btnText').textContent = 'Download';
     hideProgress();
   }
 }
 
-function openStoryModal() {
-  const modal = document.getElementById('storyModal');
-  modal.classList.add('active');
-  const saved = localStorage.getItem('ig_sessionid');
-  if (saved) document.getElementById('sessionidInput').value = saved;
-  document.getElementById('storyUsernameInput').focus();
-}
-
-function closeStoryModal() {
-  document.getElementById('storyModal').classList.remove('active');
-  document.getElementById('storyResult').style.display = 'none';
-  document.getElementById('storyError').style.display = 'none';
-  document.getElementById('storyUsernameInput').value = '';
-}
-
-function toggleSessionHelp() {
-  const help = document.getElementById('sessionHelp');
-  help.style.display = help.style.display === 'none' ? 'block' : 'none';
-}
-
+// ─── STORY ──────────────────────────────────────────────────────
 async function fetchStory() {
   const username = document.getElementById('storyUsernameInput').value.trim().replace('@', '');
-  const sessionid = document.getElementById('sessionidInput').value.trim();
-  const storyError = document.getElementById('storyError');
-  const storyResult = document.getElementById('storyResult');
+  const errEl = document.getElementById('storyError');
+  const resEl = document.getElementById('storyResult');
+  if (!username) { errEl.textContent = 'Enter a username.'; errEl.style.display = 'block'; return; }
 
-  if (!username) {
-    storyError.textContent = 'Masukkan username Instagram.';
-    storyError.style.display = 'block';
-    return;
-  }
-  if (!sessionid) {
-    storyError.textContent = 'Session ID diperlukan untuk mengakses story.';
-    storyError.style.display = 'block';
-    return;
-  }
-
-  storyError.style.display = 'none';
-  storyResult.style.display = 'none';
-
+  errEl.style.display = 'none';
+  resEl.style.display = 'none';
   const btn = document.getElementById('fetchStoryBtn');
-  const origText = btn.innerHTML;
+  const orig = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Mencari...';
+  document.getElementById('storyBtnText').innerHTML = '<span class="spin"></span>';
   showProgress();
-
-  localStorage.setItem('ig_sessionid', sessionid);
   currentStoryUsername = username;
 
   try {
     const res = await fetch('/api/story', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, sessionid })
+      body: JSON.stringify({ username })
     });
     const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengambil story.');
-
+    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch stories.');
     currentStories = data.stories;
     renderStories(data);
-
   } catch (err) {
-    storyError.textContent = err.message || 'Terjadi kesalahan.';
-    storyError.style.display = 'block';
+    errEl.textContent = err.message || 'Something went wrong.';
+    errEl.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.innerHTML = origText;
+    document.getElementById('storyBtnText').textContent = 'Search';
     hideProgress();
   }
 }
 
 function renderStories(data) {
-  const storyResult = document.getElementById('storyResult');
-  const storyGrid = document.getElementById('storyGrid');
-  const storyAuthorName = document.getElementById('storyAuthorName');
-  const storyAuthorHandle = document.getElementById('storyAuthorHandle');
-  const storyAvatar = document.getElementById('storyAvatar');
-
-  storyAuthorName.textContent = data.author || data.username;
-  storyAuthorHandle.textContent = `@${data.username}`;
-  if (data.avatar) {
-    storyAvatar.src = proxyImg(data.avatar, 'story_avatar.jpg');
-    storyAvatar.style.display = '';
-  } else {
-    storyAvatar.style.display = 'none';
-  }
-
-  storyGrid.innerHTML = '';
+  const resEl = document.getElementById('storyResult');
+  const grid = document.getElementById('storyGrid');
+  document.getElementById('storyAuthorName').textContent = data.author || data.username;
+  document.getElementById('storyAuthorHandle').textContent = `@${data.username}`;
+  const av = document.getElementById('storyAvatar');
+  av.src = data.avatar ? proxyImg(data.avatar, 'story_avatar.jpg') : '';
+  av.style.display = data.avatar ? '' : 'none';
+  grid.innerHTML = '';
   data.stories.forEach((story, i) => {
     const item = document.createElement('div');
     item.className = 'img-item';
-    const thumbSrc = story.thumb ? proxyImg(story.thumb, `story_thumb_${i}.jpg`) : '';
-    const badgeHtml = story.isVideo
-      ? `<span class="thumb-type">VIDEO</span>`
-      : '';
+    const thumb = story.thumb ? proxyImg(story.thumb, `story_thumb_${i}.jpg`) : '';
     item.innerHTML = `
-      ${thumbSrc ? `<img src="${thumbSrc}" alt="Story ${i + 1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.4rem;">${story.isVideo ? '🎬' : '🖼️'}</div>`}
-      ${badgeHtml}
-      <button class="img-overlay" onclick="downloadStory(${i})"><span>Unduh</span></button>
+      ${thumb ? `<img src="${thumb}" alt="Story ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.6rem">${story.isVideo?'🎬':'🖼️'}</div>`}
+      ${story.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
+      <button class="img-overlay" onclick="downloadStory(${i})"><span>Save</span></button>
     `;
-    storyGrid.appendChild(item);
+    grid.appendChild(item);
   });
-
-  storyResult.style.display = 'block';
+  resEl.style.display = 'block';
 }
 
 async function downloadStory(index) {
   const story = currentStories[index];
-  if (!story || !story.url) return;
+  if (!story?.url) return;
   const ext = story.isVideo ? 'mp4' : 'jpg';
   const filename = `${currentStoryUsername}_story${index + 1}.${ext}`;
   showProgress();
-  try {
-    const response = await fetch(proxyUrl(story.url, filename));
-    const blob = await response.blob();
-    saveBlobAsFile(blob, filename);
-  } catch (e) {
-    window.open(proxyUrl(story.url, filename), '_blank');
-  } finally {
-    hideProgress();
-  }
+  try { saveBlobAsFile(await (await fetch(proxyUrl(story.url, filename))).blob(), filename); }
+  catch { window.open(proxyUrl(story.url, filename), '_blank'); }
+  finally { hideProgress(); }
 }
 
 async function downloadAllStories() {
   if (!currentStories.length) return;
   const btn = document.getElementById('dlAllStoriesBtn');
-  const origText = btn.textContent;
-  btn.textContent = 'Menyiapkan...';
+  const orig = btn.textContent;
+  btn.textContent = 'Preparing...'; btn.disabled = true;
+  showProgress();
+  const imgs = currentStories.filter(s => !s.isVideo).map(s => s.url).filter(Boolean);
+  try {
+    if (imgs.length) {
+      const r = await fetch('/api/zip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ images: imgs, username: currentStoryUsername }) });
+      if (r.ok) saveBlobAsFile(await r.blob(), `${currentStoryUsername}_stories.zip`);
+    }
+    for (let i = 0; i < currentStories.length; i++) {
+      if (currentStories[i].isVideo && currentStories[i].url) {
+        await new Promise(r => setTimeout(r, 400));
+        await downloadStory(i);
+      }
+    }
+  } catch { for (let i = 0; i < currentStories.length; i++) { await downloadStory(i); await new Promise(r=>setTimeout(r,400)); } }
+  finally { btn.textContent = orig; btn.disabled = false; hideProgress(); }
+}
+
+// ─── HIGHLIGHT ──────────────────────────────────────────────────
+async function fetchHighlight() {
+  const username = document.getElementById('highlightUsernameInput').value.trim().replace('@','');
+  const errEl = document.getElementById('highlightError');
+  const resEl = document.getElementById('highlightResult');
+  if (!username) { errEl.textContent = 'Enter a username.'; errEl.style.display = 'block'; return; }
+
+  errEl.style.display = 'none';
+  resEl.style.display = 'none';
+  const btn = document.getElementById('fetchHighlightBtn');
   btn.disabled = true;
+  document.getElementById('highlightBtnText').innerHTML = '<span class="spin"></span>';
   showProgress();
 
-  const imageUrls = currentStories
-    .filter(s => !s.isVideo)
-    .map(s => s.url)
-    .filter(Boolean);
-
   try {
-    if (imageUrls.length > 0) {
-      const response = await fetch('/api/zip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images: imageUrls, username: currentStoryUsername })
-      });
-      if (response.ok) {
-        const blob = await response.blob();
-        saveBlobAsFile(blob, `${currentStoryUsername}_stories.zip`);
-      }
-    }
-    for (let i = 0; i < currentStories.length; i++) {
-      const story = currentStories[i];
-      if (story.isVideo && story.url) {
-        await new Promise(r => setTimeout(r, 400));
-        const filename = `${currentStoryUsername}_story${i + 1}.mp4`;
-        try {
-          const r = await fetch(proxyUrl(story.url, filename));
-          const bl = await r.blob();
-          saveBlobAsFile(bl, filename);
-        } catch {
-          window.open(proxyUrl(story.url, filename), '_blank');
-        }
-      }
-    }
-  } catch (e) {
-    for (let i = 0; i < currentStories.length; i++) {
-      await downloadStory(i);
-      await new Promise(r => setTimeout(r, 400));
-    }
+    const res = await fetch('/api/highlight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch highlights.');
+    currentHighlights = data.highlights;
+    renderHighlights(data);
+  } catch (err) {
+    errEl.textContent = err.message || 'Something went wrong.';
+    errEl.style.display = 'block';
   } finally {
-    btn.textContent = origText;
     btn.disabled = false;
+    document.getElementById('highlightBtnText').textContent = 'Search';
     hideProgress();
   }
 }
 
-document.addEventListener('click', e => {
-  const modal = document.getElementById('storyModal');
-  if (e.target === modal) closeStoryModal();
-});
+function renderHighlights(data) {
+  const resEl = document.getElementById('highlightResult');
+  const list = document.getElementById('highlightList');
+  document.getElementById('highlightAuthorName').textContent = data.author || data.username;
+  document.getElementById('highlightAuthorHandle').textContent = `@${data.username}`;
+  const av = document.getElementById('highlightAvatar');
+  av.src = data.avatar ? proxyImg(data.avatar, 'hl_avatar.jpg') : '';
+  av.style.display = data.avatar ? '' : 'none';
+
+  list.innerHTML = '';
+  data.highlights.forEach((hl, i) => {
+    const div = document.createElement('div');
+    div.className = 'highlight-item';
+    div.id = `hl_${i}`;
+    const thumb = hl.cover ? proxyImg(hl.cover, `hl_cover_${i}.jpg`) : '';
+    div.innerHTML = `
+      <div class="highlight-header" onclick="toggleHighlight(${i})">
+        ${thumb ? `<img class="highlight-thumb" src="${thumb}" onerror="this.style.display='none'"/>` : `<div class="highlight-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem">⭕</div>`}
+        <div class="highlight-info">
+          <div class="highlight-title">${hl.title || 'Highlight'}</div>
+          <div class="highlight-count">${hl.mediaCount ? hl.mediaCount + ' items' : 'Tap to load'}</div>
+        </div>
+        <span class="highlight-arrow">▶</span>
+      </div>
+      <div class="highlight-body" id="hlBody_${i}">
+        <div class="highlight-dl-row">
+          <button class="btn-dl-all" onclick="downloadAllHighlightItems(${i})">Download All</button>
+        </div>
+        <div class="images-grid" id="hlGrid_${i}"></div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+  resEl.style.display = 'block';
+}
+
+async function toggleHighlight(index) {
+  const item = document.getElementById(`hl_${index}`);
+  const wasOpen = item.classList.contains('open');
+  item.classList.toggle('open', !wasOpen);
+  if (wasOpen) return;
+
+  const hl = currentHighlights[index];
+  const grid = document.getElementById(`hlGrid_${index}`);
+
+  if (currentHighlightItems[index]) {
+    renderHighlightGrid(index, currentHighlightItems[index]);
+    return;
+  }
+
+  grid.innerHTML = '<div style="padding:10px;font-size:0.75rem;color:var(--text-muted)">Loading...</div>';
+  showProgress();
+
+  try {
+    const res = await fetch('/api/highlight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ highlightId: hl.id })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load highlight.');
+    currentHighlightItems[index] = data.items;
+    renderHighlightGrid(index, data.items);
+  } catch (err) {
+    grid.innerHTML = `<div style="padding:10px;font-size:0.75rem;color:var(--error-text)">${err.message}</div>`;
+  } finally { hideProgress(); }
+}
+
+function renderHighlightGrid(index, items) {
+  const grid = document.getElementById(`hlGrid_${index}`);
+  const hl = currentHighlights[index];
+  grid.innerHTML = '';
+  items.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'img-item';
+    const thumb = item.thumb ? proxyImg(item.thumb, `hl_${index}_${i}.jpg`) : '';
+    div.innerHTML = `
+      ${thumb ? `<img src="${thumb}" alt="Item ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.4rem">${item.isVideo?'🎬':'🖼️'}</div>`}
+      ${item.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
+      <button class="img-overlay" onclick="downloadHighlightItem(${index},${i})"><span>Save</span></button>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+async function downloadHighlightItem(hlIndex, itemIndex) {
+  const item = currentHighlightItems[hlIndex]?.[itemIndex];
+  if (!item?.url) return;
+  const hl = currentHighlights[hlIndex];
+  const ext = item.isVideo ? 'mp4' : 'jpg';
+  const filename = `${hl.title || 'highlight'}_${itemIndex + 1}.${ext}`;
+  showProgress();
+  try { saveBlobAsFile(await (await fetch(proxyUrl(item.url, filename))).blob(), filename); }
+  catch { window.open(proxyUrl(item.url, filename), '_blank'); }
+  finally { hideProgress(); }
+}
+
+async function downloadAllHighlightItems(hlIndex) {
+  const items = currentHighlightItems[hlIndex];
+  if (!items?.length) return;
+  const hl = currentHighlights[hlIndex];
+  const btn = document.querySelector(`#hl_${hlIndex} .btn-dl-all`);
+  const orig = btn?.textContent;
+  if (btn) { btn.textContent = 'Preparing...'; btn.disabled = true; }
+  showProgress();
+  for (let i = 0; i < items.length; i++) {
+    await new Promise(r => setTimeout(r, 400));
+    await downloadHighlightItem(hlIndex, i);
+  }
+  if (btn) { btn.textContent = orig; btn.disabled = false; }
+  hideProgress();
+}
