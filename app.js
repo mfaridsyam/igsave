@@ -355,20 +355,33 @@ async function downloadAllStories() {
   const orig = btn.textContent;
   btn.textContent = 'Preparing...'; btn.disabled = true;
   showProgress();
-  const imgs = currentStories.filter(s => !s.isVideo).map(s => s.url).filter(Boolean);
+
+  // Build unified file list for ZIP (both photos and videos)
+  const files = currentStories.map((s, i) => ({
+    url: s.url,
+    filename: `${currentStoryUsername}_story${i + 1}.${s.isVideo ? 'mp4' : 'jpg'}`
+  })).filter(f => f.url);
+
   try {
-    if (imgs.length) {
-      const r = await fetch('/api/zip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ images: imgs, username: currentStoryUsername }) });
-      if (r.ok) saveBlobAsFile(await r.blob(), `${currentStoryUsername}_stories.zip`);
+    const r = await fetch('/api/zip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, username: currentStoryUsername })
+    });
+    if (r.ok) {
+      saveBlobAsFile(await r.blob(), `${currentStoryUsername}_stories.zip`);
+    } else {
+      throw new Error('ZIP failed');
     }
+  } catch {
+    // Fallback: download one by one
     for (let i = 0; i < currentStories.length; i++) {
-      if (currentStories[i].isVideo && currentStories[i].url) {
-        await new Promise(r => setTimeout(r, 400));
-        await downloadStory(i);
-      }
+      await downloadStory(i);
+      await new Promise(r => setTimeout(r, 400));
     }
-  } catch { for (let i = 0; i < currentStories.length; i++) { await downloadStory(i); await new Promise(r=>setTimeout(r,400)); } }
-  finally { btn.textContent = orig; btn.disabled = false; hideProgress(); }
+  } finally {
+    btn.textContent = orig; btn.disabled = false; hideProgress();
+  }
 }
 
 // ─── HIGHLIGHT ──────────────────────────────────────────────────
@@ -510,10 +523,34 @@ async function downloadAllHighlightItems(hlIndex) {
   const orig = btn?.textContent;
   if (btn) { btn.textContent = 'Preparing...'; btn.disabled = true; }
   showProgress();
-  for (let i = 0; i < items.length; i++) {
-    await new Promise(r => setTimeout(r, 400));
-    await downloadHighlightItem(hlIndex, i);
+
+  const safeTitle = (hl.title || 'highlight').replace(/[^a-zA-Z0-9_]/g, '_');
+
+  // Build unified file list for ZIP
+  const files = items.map((item, i) => ({
+    url: item.url,
+    filename: `${safeTitle}_${i + 1}.${item.isVideo ? 'mp4' : 'jpg'}`
+  })).filter(f => f.url);
+
+  try {
+    const r = await fetch('/api/zip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, username: safeTitle })
+    });
+    if (r.ok) {
+      saveBlobAsFile(await r.blob(), `${safeTitle}.zip`);
+    } else {
+      throw new Error('ZIP failed');
+    }
+  } catch {
+    // Fallback: one by one
+    for (let i = 0; i < items.length; i++) {
+      await downloadHighlightItem(hlIndex, i);
+      await new Promise(r => setTimeout(r, 400));
+    }
+  } finally {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+    hideProgress();
   }
-  if (btn) { btn.textContent = orig; btn.disabled = false; }
-  hideProgress();
 }
