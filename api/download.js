@@ -5,9 +5,6 @@ const API_KEYS = [
 const IG120_HOST = 'instagram120.p.rapidapi.com';
 const IG120_BASE = 'https://instagram120.p.rapidapi.com/api/instagram';
 
-const SCRAPER_HOST = 'instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
-const SCRAPER_BASE = 'https://instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -57,21 +54,6 @@ async function ig120(endpoint, body) {
   throw lastError || new Error('All API keys exhausted');
 }
 
-async function scraperFetch(url) {
-  const r = await fetch(
-    `${SCRAPER_BASE}/scraper?url=${encodeURIComponent(url)}`,
-    {
-      method: 'GET',
-      headers: {
-        'x-rapidapi-key': RAPIDAPI_KEY,
-        'x-rapidapi-host': SCRAPER_HOST,
-      },
-    }
-  );
-  if (!r.ok) throw new Error(`Scraper error ${r.status}`);
-  return r.json();
-}
-
 async function fetchMedia(shortcode, originalUrl) {
   const raw = await ig120('mediaByShortcode', { shortcode });
   const item = Array.isArray(raw) ? raw[0] : raw;
@@ -97,23 +79,19 @@ async function fetchMedia(shortcode, originalUrl) {
   let type = 'Post';
 
   if (!videoUrl) {
-    try {
-      const scraperData = await scraperFetch(originalUrl);
-      const scraperItems = scraperData?.data || [];
+    const imageEntries = urls.filter(u =>
+      u.extension === 'jpg' || u.extension === 'jpeg' || u.extension === 'png' ||
+      u.name === 'JPG' || u.name === 'PNG' || u.name === 'JPEG' ||
+      (u.url && (u.url.includes('.jpg') || u.url.includes('.jpeg') || u.url.includes('cdninstagram')))
+    );
 
-      const imgItems = scraperItems.filter(i => !i.isVideo);
-      images = imgItems.map(i => i.media).filter(Boolean);
-
-      if (scraperItems.length > 1) {
-        type = 'Carousel';
-      } else if (images.length === 1) {
-        type = 'Foto';
-      }
-    } catch (e) {
-      console.log('Scraper fallback failed:', e.message);
-      if (cover) images = [cover];
-      type = 'Foto';
+    if (imageEntries.length > 0) {
+      images = imageEntries.map(u => u.url).filter(Boolean);
+    } else if (cover) {
+      images = [cover];
     }
+
+    type = images.length > 1 ? 'Carousel' : 'Foto';
   } else {
     type = originalUrl.includes('/reel') ? 'Reel' : 'Video';
   }
