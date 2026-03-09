@@ -1,4 +1,7 @@
-const RAPIDAPI_KEY = '01d499e5bcmsh744e16d8d9765cep1dacfajsn4f64fff0f946';
+const API_KEYS = [
+  '01d499e5bcmsh744e16d8d9765cep1dacfajsn4f64fff0f946',
+  '5ca6a28e1amsh4e72af35cbb82bfp1aa9b9jsnf0d6c201c649',
+];
 const IG120_HOST = 'instagram120.p.rapidapi.com';
 const IG120_BASE = 'https://instagram120.p.rapidapi.com/api/instagram';
 
@@ -22,17 +25,27 @@ export default async function handler(req, res) {
 }
 
 async function ig120(endpoint, body) {
-  const r = await fetch(`${IG120_BASE}/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'x-rapidapi-key': RAPIDAPI_KEY,
-      'x-rapidapi-host': IG120_HOST,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error(`API error ${r.status}`);
-  return r.json();
+  let lastError;
+  for (const key of API_KEYS) {
+    try {
+      const r = await fetch(`${IG120_BASE}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'x-rapidapi-key': key,
+          'x-rapidapi-host': IG120_HOST,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (r.status === 429) { lastError = new Error(`Rate limit on key ...${key.slice(-6)}`); continue; }
+      if (!r.ok) throw new Error(`API error ${r.status}`);
+      return r.json();
+    } catch (e) {
+      if (e.message.includes('429') || e.message.includes('Rate limit')) { lastError = e; continue; }
+      throw e;
+    }
+  }
+  throw lastError || new Error('All API keys exhausted');
 }
 
 async function fetchStories(username) {

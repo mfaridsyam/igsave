@@ -7,7 +7,6 @@
   <meta name="description" content="Download Instagram Reels, Photos, Stories and Highlights without watermark. Free forever."/>
   <meta name="theme-color" content="#dd2a7b"/>
 
-  <!-- PWA -->
   <link rel="manifest" href="/manifest.json"/>
   <link rel="apple-touch-icon" href="/icons/icon-192.png"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -30,7 +29,6 @@
     <h1>Instagram<br><span>Downloader</span></h1>
     <p class="hero-sub">Paste an Instagram link and hit download. Free forever.</p>
 
-    <!-- Main URL input -->
     <div class="input-wrap">
       <div class="input-row">
         <input
@@ -52,7 +50,6 @@
 
     <div class="error-box" id="errorBox"><span id="errorText"></span></div>
 
-    <!-- Post/Reel result -->
     <div class="result-card" id="resultCard">
       <div class="result-inner">
         <div class="result-media">
@@ -90,7 +87,6 @@
       </div>
     </div>
 
-    <!-- Story & Highlight tabs -->
     <div class="sh-tabs">
       <button class="sh-tab active" id="tabStory" onclick="switchTab('story')">
         <span class="sh-tab-icon">○</span> Story
@@ -100,7 +96,6 @@
       </button>
     </div>
 
-    <!-- Story section -->
     <div class="sh-section" id="sectionStory">
       <div class="sh-input-row">
         <input type="text" id="storyUsernameInput" class="url-input sh-input" placeholder="Enter username (e.g. natgeo)" autocomplete="off" spellcheck="false"/>
@@ -125,7 +120,6 @@
       </div>
     </div>
 
-    <!-- Highlight section -->
     <div class="sh-section" id="sectionHighlight" style="display:none">
       <div class="sh-input-row">
         <input type="text" id="highlightUsernameInput" class="url-input sh-input" placeholder="Enter username (e.g. natgeo)" autocomplete="off" spellcheck="false"/>
@@ -145,15 +139,12 @@
         <div class="images-header" style="margin-top:12px">
           <span class="images-label">Highlights</span>
         </div>
-        <!-- Highlight list - click to expand -->
         <div id="highlightList"></div>
       </div>
     </div>
   </div>
 
-  <!-- How to use -->
   <div class="howto-section">
-
     <div class="howto-cards">
       <div class="howto-card">
         <div class="howto-card-title">Reels & Videos</div>
@@ -168,34 +159,6 @@
         <div class="howto-card-desc">Enter a public account's username to browse and download their active stories and highlights.</div>
       </div>
     </div>
-
-    <h2 class="howto-title">How to Download Instagram Content</h2>
-    <p class="howto-sub">Follow these simple steps to save any Instagram content for free.</p>
-
-    <div class="howto-grid">
-      <div class="howto-step">
-        <div class="step-num">1</div>
-        <div class="step-content">
-          <div class="step-title">Copy the Link</div>
-          <div class="step-desc">Open Instagram, find the post, Reel or Story you want to save. Tap the <strong>⋯</strong> menu and select <strong>Copy Link</strong>.</div>
-        </div>
-      </div>
-      <div class="howto-step">
-        <div class="step-num">2</div>
-        <div class="step-content">
-          <div class="step-title">Paste & Download</div>
-          <div class="step-desc">Paste the link into the input field above and tap <strong>Download</strong>. The media will be fetched instantly.</div>
-        </div>
-      </div>
-      <div class="howto-step">
-        <div class="step-num">3</div>
-        <div class="step-content">
-          <div class="step-title">Save to Device</div>
-          <div class="step-desc">Tap the download button on the result card. The file will be saved directly to your device — no watermark.</div>
-        </div>
-      </div>
-    </div>
-
   </div>
 
   <footer>

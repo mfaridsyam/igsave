@@ -714,7 +714,6 @@ footer a:hover { color: var(--text); }
   border-top: 1px solid var(--border);
 }
 
-/* ─── BUTTON RADIUS FIX ─────────────────────────── */
 .btn-secondary {
   border-radius: 0 0 0 calc(var(--radius) - 4px);
 }
@@ -722,7 +721,6 @@ footer a:hover { color: var(--text); }
   border-radius: 0 0 calc(var(--radius) - 4px) 0;
 }
 
-/* ─── STORY / HIGHLIGHT TABS ────────────────────── */
 .sh-tabs {
   display: flex;
   gap: 6px;
@@ -767,7 +765,6 @@ footer a:hover { color: var(--text); }
   font-weight: 700;
 }
 
-/* ─── STORY / HIGHLIGHT SECTION ─────────────────── */
 .sh-section {
   margin-top: 0;
   background: var(--surface);
@@ -827,7 +824,6 @@ footer a:hover { color: var(--text); }
   margin-top: 10px;
 }
 
-/* ─── HIGHLIGHT LIST ────────────────────────────── */
 .highlight-item {
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -911,7 +907,6 @@ footer a:hover { color: var(--text); }
   margin-bottom: 8px;
 }
 
-/* ─── HOW TO USE SECTION ─────────────────────────── */
 .howto-section {
   margin: 44px 0 0;
   padding-top: 36px;
@@ -1000,7 +995,6 @@ footer a:hover { color: var(--text); }
   line-height: 1.6;
 }
 
-/* ─── PWA INSTALL BANNER ─────────────────────────── */
 .pwa-banner {
   display: none;
   align-items: center;

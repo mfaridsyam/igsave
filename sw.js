@@ -22,7 +22,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Don't cache API calls
   if (e.request.url.includes('/api/')) return;
 
   e.respondWith(

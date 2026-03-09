@@ -1,4 +1,3 @@
-// ─── DISABLE RIGHT CLICK & INSPECT ──────────────────────────────
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', e => {
   if (
@@ -8,7 +7,6 @@ document.addEventListener('keydown', e => {
   ) { e.preventDefault(); return false; }
 });
 
-// ─── GLOBALS ────────────────────────────────────────────────────
 const urlInput = document.getElementById('urlInput');
 const downloadBtn = document.getElementById('downloadBtn');
 const errorBox = document.getElementById('errorBox');
@@ -23,7 +21,6 @@ let currentHighlights = [];
 let currentHighlightItems = {};
 let deferredPrompt = null;
 
-// ─── PWA ────────────────────────────────────────────────────────
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
@@ -45,14 +42,12 @@ function dismissPWA() {
   if (banner) banner.classList.remove('show');
 }
 
-// Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
 
-// ─── TAB SWITCHING ───────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById('tabStory').classList.toggle('active', tab === 'story');
   document.getElementById('tabHighlight').classList.toggle('active', tab === 'highlight');
@@ -60,7 +55,6 @@ function switchTab(tab) {
   document.getElementById('sectionHighlight').style.display = tab === 'highlight' ? 'block' : 'none';
 }
 
-// ─── UTILITY ────────────────────────────────────────────────────
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchMedia(); });
 urlInput.addEventListener('input', updatePasteBtn);
 document.getElementById('storyUsernameInput').addEventListener('keydown', e => { if (e.key === 'Enter') fetchStory(); });
@@ -132,7 +126,6 @@ function proxyImg(url, filename) {
   return proxyUrl(url, filename || 'image.jpg');
 }
 
-// ─── DOWNLOAD HELPERS ───────────────────────────────────────────
 async function downloadVideo(btn) {
   const url = btn.dataset.url;
   const filename = btn.dataset.filename || 'igsave_video.mp4';
@@ -220,7 +213,6 @@ function renderImages(images) {
   section.style.display = 'block';
 }
 
-// ─── MAIN DOWNLOAD ──────────────────────────────────────────────
 async function fetchMedia() {
   const url = urlInput.value.trim();
   if (!url) { urlInput.focus(); return; }
@@ -279,7 +271,6 @@ async function fetchMedia() {
   }
 }
 
-// ─── STORY ──────────────────────────────────────────────────────
 async function fetchStory() {
   const username = document.getElementById('storyUsernameInput').value.trim().replace('@', '');
   const errEl = document.getElementById('storyError');
@@ -356,7 +347,6 @@ async function downloadAllStories() {
   btn.textContent = 'Preparing...'; btn.disabled = true;
   showProgress();
 
-  // Build unified file list for ZIP (both photos and videos)
   const files = currentStories.map((s, i) => ({
     url: s.url,
     filename: `${currentStoryUsername}_story${i + 1}.${s.isVideo ? 'mp4' : 'jpg'}`
@@ -374,7 +364,6 @@ async function downloadAllStories() {
       throw new Error('ZIP failed');
     }
   } catch {
-    // Fallback: download one by one
     for (let i = 0; i < currentStories.length; i++) {
       await downloadStory(i);
       await new Promise(r => setTimeout(r, 400));
@@ -384,7 +373,6 @@ async function downloadAllStories() {
   }
 }
 
-// ─── HIGHLIGHT ──────────────────────────────────────────────────
 async function fetchHighlight() {
   const username = document.getElementById('highlightUsernameInput').value.trim().replace('@','');
   const errEl = document.getElementById('highlightError');
@@ -526,7 +514,6 @@ async function downloadAllHighlightItems(hlIndex) {
 
   const safeTitle = (hl.title || 'highlight').replace(/[^a-zA-Z0-9_]/g, '_');
 
-  // Build unified file list for ZIP
   const files = items.map((item, i) => ({
     url: item.url,
     filename: `${safeTitle}_${i + 1}.${item.isVideo ? 'mp4' : 'jpg'}`
@@ -544,7 +531,6 @@ async function downloadAllHighlightItems(hlIndex) {
       throw new Error('ZIP failed');
     }
   } catch {
-    // Fallback: one by one
     for (let i = 0; i < items.length; i++) {
       await downloadHighlightItem(hlIndex, i);
       await new Promise(r => setTimeout(r, 400));

@@ -9,7 +9,6 @@ export default async function handler(req, res) {
 
   const { images, videos, files, username } = req.body;
 
-  // Build unified file list
   let fileList = [];
   if (files && Array.isArray(files)) {
     fileList = files;
@@ -25,7 +24,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No files provided' });
   }
 
-  // Domain validation
   const allowedDomains = ['cdninstagram.com', 'fbcdn.net', 'instagram.com', 'scontent'];
   const invalidFile = fileList.find(f => f.url && !allowedDomains.some(d => f.url.includes(d)));
   if (invalidFile) {
