@@ -22,7 +22,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('/api/')) return;
+  const url = e.request.url;
+
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+  if (url.includes('/api/')) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => {
