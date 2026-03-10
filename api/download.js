@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   const igRegex = /https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|stories|tv)\/([^/?#]+)/;
   const match = url.match(igRegex);
-  if (!match) return res.status(400).json({ error: 'URL Instagram tidak valid.' });
+  if (!match) return res.status(400).json({ error: 'Invalid Instagram URL.' });
 
   const shortcode = match[3];
 
@@ -55,21 +55,23 @@ async function ig120(endpoint, body) {
 }
 
 async function fetchMedia(shortcode, originalUrl) {
-  const raw = await ig120('mediaByShortcode', { shortcode });
-  const item = Array.isArray(raw) ? raw[0] : raw;
+  const raw = await ig120('links', { url: originalUrl });
 
-  if (!item) throw new Error('Gagal mengambil media. Pastikan link benar dan akun tidak privat.');
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return fetchMediaByShortcode(shortcode, originalUrl);
+  }
 
-  const meta = item.meta || {};
-  const urls = item.urls || [];
+  const firstItem = raw[0];
+  if (!firstItem) throw new Error('Failed to fetch media. Make sure the link is correct and the account is public.');
 
+  const meta = firstItem.meta || {};
   const username = meta.username || '';
   const title = meta.title || '';
   const likes = meta.likeCount || 0;
   const comments = meta.commentCount || 0;
-  const cover = item.pictureUrl || '';
+  const cover = firstItem.pictureUrl || '';
 
-  const videoEntry = urls.find(u =>
+  const videoEntry = (firstItem.urls || []).find(u =>
     u.extension === 'mp4' || u.name === 'MP4' ||
     (u.url && u.url.includes('.mp4'))
   );
@@ -79,18 +81,7 @@ async function fetchMedia(shortcode, originalUrl) {
   let type = 'Post';
 
   if (!videoUrl) {
-    const imageEntries = urls.filter(u =>
-      u.extension === 'jpg' || u.extension === 'jpeg' || u.extension === 'png' ||
-      u.name === 'JPG' || u.name === 'PNG' || u.name === 'JPEG' ||
-      (u.url && (u.url.includes('.jpg') || u.url.includes('.jpeg') || u.url.includes('cdninstagram')))
-    );
-
-    if (imageEntries.length > 0) {
-      images = imageEntries.map(u => u.url).filter(Boolean);
-    } else if (cover) {
-      images = [cover];
-    }
-
+    images = raw.map(item => item.pictureUrl || item.urls?.[0]?.url || '').filter(Boolean);
     type = images.length > 1 ? 'Carousel' : 'Foto';
   } else {
     type = originalUrl.includes('/reel') ? 'Reel' : 'Video';
@@ -124,5 +115,44 @@ async function fetchMedia(shortcode, originalUrl) {
       music: null,
       images: videoUrl ? [] : images,
     },
+  };
+}
+
+async function fetchMediaByShortcode(shortcode, originalUrl) {
+  const raw = await ig120('mediaByShortcode', { shortcode });
+  const item = Array.isArray(raw) ? raw[0] : raw;
+
+  if (!item) throw new Error('Failed to fetch media. Make sure the link is correct and the account is public.');
+
+  const meta = item.meta || {};
+  const urls = item.urls || [];
+  const username = meta.username || '';
+  const title = meta.title || '';
+  const likes = meta.likeCount || 0;
+  const comments = meta.commentCount || 0;
+  const cover = item.pictureUrl || '';
+
+  const videoEntry = urls.find(u =>
+    u.extension === 'mp4' || u.name === 'MP4' ||
+    (u.url && u.url.includes('.mp4'))
+  );
+  const videoUrl = videoEntry?.url || '';
+
+  const type = videoUrl ? (originalUrl.includes('/reel') ? 'Reel' : 'Video') : 'Foto';
+  const images = (!videoUrl && cover) ? [cover] : [];
+
+  let avatar = '', author = username;
+  if (username) {
+    try {
+      const uRaw = await ig120('userInfo', { username });
+      const userResult = uRaw?.result?.[0]?.user || uRaw?.result?.user || {};
+      avatar = userResult.profile_pic_url || '';
+      author = userResult.full_name || username;
+    } catch (e) {}
+  }
+
+  return {
+    success: true,
+    media: { title, author, authorUsername: username, avatar, cover, type, likes, comments, downloadUrl: videoUrl, music: null, images: videoUrl ? [] : images },
   };
 }
