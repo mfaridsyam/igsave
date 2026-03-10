@@ -158,9 +158,10 @@ async function downloadAudio(btn) {
   finally { btn.disabled = false; btn.innerHTML = orig; hideProgress(); }
 }
 
-async function downloadSingleImage(url, index, prefix) {
-  const uname = prefix || currentUsername;
-  const filename = `${uname}_image${index + 1}.jpg`;
+async function downloadSingleImage(url, index, isVideo) {
+  const video = isVideo === true || isVideo === 'true';
+  const ext = video ? 'mp4' : 'jpg';
+  const filename = `${currentUsername}_${video ? 'video' : 'image'}${index + 1}.${ext}`;
   showProgress();
   try {
     const r = await fetch(proxyUrl(url, filename));
@@ -175,19 +176,28 @@ async function downloadAllImages() {
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.textContent = 'Preparing...'; btn.disabled = true; }
   showProgress();
+
+  const files = currentImages.map((entry, i) => {
+    const isObj = typeof entry === 'object' && entry !== null;
+    const isVideo = isObj && entry.type === 'video';
+    const url = isObj ? entry.url : entry;
+    const ext = isVideo ? 'mp4' : 'jpg';
+    return { url, filename: `${currentUsername}_${isVideo ? 'video' : 'image'}${i + 1}.${ext}` };
+  });
+
   try {
     const r = await fetch('/api/zip', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ images: currentImages, username: currentUsername })
+      body: JSON.stringify({ files, username: currentUsername })
     });
     if (!r.ok) throw new Error();
-    saveBlobAsFile(await r.blob(), `${currentUsername}_images.zip`);
+    saveBlobAsFile(await r.blob(), `${currentUsername}_files.zip`);
   } catch {
-    for (let i = 0; i < currentImages.length; i++) {
+    for (let i = 0; i < files.length; i++) {
       await new Promise(r => setTimeout(r, 500));
-      try { saveBlobAsFile(await (await fetch(proxyUrl(currentImages[i], `${currentUsername}_image${i+1}.jpg`))).blob(), `${currentUsername}_image${i+1}.jpg`); }
-      catch { window.open(currentImages[i], '_blank'); }
+      try { saveBlobAsFile(await (await fetch(proxyUrl(files[i].url, files[i].filename))).blob(), files[i].filename); }
+      catch { window.open(files[i].url, '_blank'); }
     }
   } finally {
     if (btn) { btn.textContent = orig; btn.disabled = false; }
@@ -201,12 +211,17 @@ function renderImages(images) {
   if (!images || !images.length) { section.style.display = 'none'; return; }
   currentImages = images;
   grid.innerHTML = '';
-  images.forEach((imgUrl, i) => {
+  images.forEach((entry, i) => {
+    const isObj = typeof entry === 'object' && entry !== null;
+    const isVideo = isObj && entry.type === 'video';
+    const mediaUrl = isObj ? entry.url : entry;
+    const thumbUrl = isObj ? (entry.thumb || entry.url) : entry;
     const item = document.createElement('div');
     item.className = 'img-item';
     item.innerHTML = `
-      <img src="${proxyImg(imgUrl, `preview_${i+1}.jpg`)}" alt="Photo ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>
-      <button class="img-overlay" onclick="downloadSingleImage('${imgUrl}',${i})"><span>Save</span></button>
+      <img src="${proxyImg(thumbUrl, `preview_${i+1}.jpg`)}" alt="${isVideo ? 'Video' : 'Photo'} ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>
+      ${isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
+      <button class="img-overlay" onclick="downloadSingleImage('${mediaUrl}',${i},${isVideo})"><span>Save</span></button>
     `;
     grid.appendChild(item);
   });

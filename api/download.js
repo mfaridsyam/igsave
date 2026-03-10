@@ -106,7 +106,7 @@ async function fetchMedia(shortcode, originalUrl) {
   } else {
     type = 'Carousel';
     finalVideoUrl = '';
-    finalImages = images.map(i => i.url);
+    finalImages = images;
   }
 
   let avatar = '';
