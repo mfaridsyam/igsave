@@ -71,20 +71,42 @@ async function fetchMedia(shortcode, originalUrl) {
   const comments = meta.commentCount || 0;
   const cover = firstItem.pictureUrl || '';
 
-  const videoEntry = (firstItem.urls || []).find(u =>
-    u.extension === 'mp4' || u.name === 'MP4' ||
-    (u.url && u.url.includes('.mp4'))
-  );
-  const videoUrl = videoEntry?.url || '';
-
+  let videoUrl = '';
   let images = [];
-  let type = 'Post';
 
-  if (!videoUrl) {
-    images = raw.map(item => item.pictureUrl || item.urls?.[0]?.url || '').filter(Boolean);
-    type = images.length > 1 ? 'Carousel' : 'Foto';
-  } else {
+  for (const item of raw) {
+    const videoEntry = (item.urls || []).find(u =>
+      u.extension === 'mp4' || u.name === 'MP4' ||
+      (u.url && u.url.includes('.mp4'))
+    );
+    if (videoEntry?.url) {
+      if (!videoUrl) videoUrl = videoEntry.url;
+      const thumb = item.pictureUrl || '';
+      if (thumb) images.push({ type: 'video', url: videoEntry.url, thumb });
+    } else {
+      const photoUrl = item.pictureUrl || item.urls?.[0]?.url || '';
+      if (photoUrl) images.push({ type: 'photo', url: photoUrl, thumb: photoUrl });
+    }
+  }
+
+  const isAllVideo = images.length > 0 && images.every(i => i.type === 'video');
+  const isMixed = images.some(i => i.type === 'video') && images.some(i => i.type === 'photo');
+  const isAllPhoto = images.length > 0 && images.every(i => i.type === 'photo');
+
+  let type, finalImages, finalVideoUrl;
+
+  if (isAllVideo && images.length === 1) {
     type = originalUrl.includes('/reel') ? 'Reel' : 'Video';
+    finalVideoUrl = videoUrl;
+    finalImages = [];
+  } else if (isAllPhoto) {
+    type = images.length > 1 ? 'Carousel' : 'Photo';
+    finalVideoUrl = '';
+    finalImages = images.map(i => i.url);
+  } else {
+    type = 'Carousel';
+    finalVideoUrl = '';
+    finalImages = images.map(i => i.url);
   }
 
   let avatar = '';
@@ -111,9 +133,9 @@ async function fetchMedia(shortcode, originalUrl) {
       type,
       likes,
       comments,
-      downloadUrl: videoUrl,
+      downloadUrl: finalVideoUrl,
       music: null,
-      images: videoUrl ? [] : images,
+      images: finalImages,
     },
   };
 }
