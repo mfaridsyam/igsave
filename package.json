@@ -8,6 +8,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "archiver": "^6.0.1"
   },
   "engines": {
