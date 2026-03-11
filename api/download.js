@@ -71,7 +71,19 @@ async function fetchMedia(shortcode, originalUrl) {
   const likes = meta.likeCount || 0;
   const comments = meta.commentCount || 0;
   const cover = firstItem.pictureUrl || '';
-  const timestamp = meta.timestamp || meta.taken_at || firstItem.timestamp || firstItem.taken_at || null;
+
+  const timestamp =
+    meta.timestamp || meta.taken_at || meta.takenAt ||
+    meta.created_time || meta.createdTime || meta.date ||
+    meta.postedAt || meta.posted_at ||
+    firstItem.timestamp || firstItem.taken_at || firstItem.takenAt ||
+    firstItem.created_time || firstItem.createdTime ||
+    firstItem.date || firstItem.postedAt || firstItem.posted_at || null;
+
+  console.log('[DEBUG] meta keys:', Object.keys(meta));
+  console.log('[DEBUG] meta:', JSON.stringify(meta).substring(0, 500));
+  console.log('[DEBUG] firstItem keys:', Object.keys(firstItem));
+  console.log('[DEBUG] timestamp found:', timestamp);
 
   let videoUrl = '';
   let images = [];
@@ -157,6 +169,19 @@ async function fetchMediaByShortcode(shortcode, originalUrl) {
   const comments = meta.commentCount || 0;
   const cover = item.pictureUrl || '';
 
+  const timestamp =
+    meta.timestamp || meta.taken_at || meta.takenAt ||
+    meta.created_time || meta.createdTime || meta.date ||
+    meta.postedAt || meta.posted_at ||
+    item.timestamp || item.taken_at || item.takenAt ||
+    item.created_time || item.createdTime ||
+    item.date || item.postedAt || item.posted_at || null;
+
+  console.log('[DEBUG shortcode] meta keys:', Object.keys(meta));
+  console.log('[DEBUG shortcode] meta:', JSON.stringify(meta).substring(0, 500));
+  console.log('[DEBUG shortcode] item keys:', Object.keys(item));
+  console.log('[DEBUG shortcode] timestamp found:', timestamp);
+
   const videoEntry = urls.find(u =>
     u.extension === 'mp4' || u.name === 'MP4' ||
     (u.url && u.url.includes('.mp4'))
@@ -178,6 +203,6 @@ async function fetchMediaByShortcode(shortcode, originalUrl) {
 
   return {
     success: true,
-    media: { title, author, authorUsername: username, avatar, cover, type, likes, comments, downloadUrl: videoUrl, music: null, images: videoUrl ? [] : images },
+    media: { title, author, authorUsername: username, avatar, cover, type, likes, comments, timestamp, downloadUrl: videoUrl, music: null, images: videoUrl ? [] : images },
   };
 }

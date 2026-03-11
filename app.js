@@ -534,9 +534,13 @@ function renderHighlightGrid(index, items) {
     const div = document.createElement('div');
     div.className = 'img-item';
     const thumb = item.thumb ? proxyImg(item.thumb, `hl_${index}_${i}.jpg`) : '';
+    const timeInfo = item.timestamp ? formatTimeAgo(item.timestamp) : null;
+    const timeLabel = timeInfo ? timeInfo.ago : '';
+    const timeFull = timeInfo ? timeInfo.full : '';
     div.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Item ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.4rem">${item.isVideo?'🎬':'🖼️'}</div>`}
       ${item.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
+      ${timeLabel ? `<div class="story-timestamp" title="${timeFull}">${timeLabel}</div>` : ''}
       <button class="img-overlay" onclick="downloadHighlightItem(${index},${i})"><span>Save</span></button>
     `;
     grid.appendChild(div);

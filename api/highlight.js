@@ -128,11 +128,16 @@ async function fetchHighlightItems(highlightId) {
       item.display_url ||
       item.thumbnail_url ||
       '';
+    const timestamp =
+      item.taken_at || item.timestamp || item.takenAt ||
+      item.created_time || item.createdTime ||
+      item.date || item.posted_at || null;
     return {
       id: item.id || i,
       isVideo,
       url: isVideo ? videoUrl : imageUrl,
       thumb: imageUrl,
+      timestamp,
     };
   }).filter(i => i.url);
 
