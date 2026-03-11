@@ -131,7 +131,20 @@ function formatStoryLabel(ts) {
   if (diff < 24 * 60 * 60 * 1000) {
     return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   }
-  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  return date.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatHighlightLabel(ts) {
+  const date = tsToDate(ts);
+  if (!date) return '';
+  const diff = Date.now() - date.getTime();
+  if (diff < 24 * 60 * 60 * 1000) {
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  }
+  if (diff < 365 * 24 * 60 * 60 * 1000) {
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  }
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatFileDateTime(ts) {
@@ -322,7 +335,7 @@ async function fetchMedia() {
       const statsEl = document.querySelector('.result-stats');
       if (statsEl) statsEl.insertAdjacentElement('afterend', resDateEl);
     }
-    resDateEl.textContent = tsFormatted ? '📅 ' + tsFormatted : '';
+    resDateEl.textContent = tsFormatted || '';
     resDateEl.style.display = tsFormatted ? '' : 'none';
 
     const likesEl = document.getElementById('resLikes');
@@ -572,7 +585,7 @@ function renderHighlightGrid(index, items) {
     const div = document.createElement('div');
     div.className = 'img-item';
     const thumb = item.thumb ? proxyImg(item.thumb, `hl_${index}_${i}.jpg`) : '';
-    const timeLabel = formatStoryLabel(item.takenAt || item.timestamp);
+    const timeLabel = formatHighlightLabel(item.takenAt || item.timestamp);
     div.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Item ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.4rem">${item.isVideo?'🎬':'🖼️'}</div>`}
       ${item.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
