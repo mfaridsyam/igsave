@@ -100,6 +100,28 @@ function formatNum(n) {
   return n.toString();
 }
 
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return '';
+  const ts = timestamp > 1e10 ? timestamp : timestamp * 1000;
+  const date = new Date(ts);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  let ago = '';
+  if (diffSec < 60) ago = `${diffSec}s ago`;
+  else if (diffMin < 60) ago = `${diffMin}m ago`;
+  else if (diffHour < 24) ago = `${diffHour}h ago`;
+  else if (diffDay < 7) ago = `${diffDay}d ago`;
+  else ago = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: diffDay > 365 ? 'numeric' : undefined });
+
+  const timeStr = date.toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return { ago, full: timeStr };
+}
+
 function resetUI() {
   errorBox.classList.remove('active');
   resultCard.classList.remove('active');
@@ -266,6 +288,17 @@ async function fetchMedia() {
       likesEl.style.display = commentsEl.style.display = 'none';
     }
 
+    const tsEl = document.getElementById('resTimestamp');
+    if (tsEl) {
+      if (v.timestamp) {
+        const t = formatTimeAgo(v.timestamp);
+        tsEl.innerHTML = `<span class="ts-ago">${t.ago}</span> <span class="ts-full">· ${t.full}</span>`;
+        tsEl.style.display = '';
+      } else {
+        tsEl.style.display = 'none';
+      }
+    }
+
     const dlVideo = document.getElementById('dlVideoBtn');
     dlVideo.style.display = v.downloadUrl ? 'flex' : 'none';
     if (v.downloadUrl) { dlVideo.dataset.url = v.downloadUrl; dlVideo.dataset.filename = `${currentUsername}_${ts}.mp4`; }
@@ -334,9 +367,13 @@ function renderStories(data) {
     const item = document.createElement('div');
     item.className = 'img-item';
     const thumb = story.thumb ? proxyImg(story.thumb, `story_thumb_${i}.jpg`) : '';
+    const timeInfo = story.timestamp ? formatTimeAgo(story.timestamp) : null;
+    const timeLabel = timeInfo ? timeInfo.ago : (story.timestampLabel || `Story ${i+1}`);
+    const timeFull = timeInfo ? timeInfo.full : '';
     item.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Story ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.6rem">${story.isVideo?'🎬':'🖼️'}</div>`}
       ${story.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
+      <div class="story-timestamp" title="${timeFull}">${timeLabel}</div>
       <button class="img-overlay" onclick="downloadStory(${i})"><span>Save</span></button>
     `;
     grid.appendChild(item);

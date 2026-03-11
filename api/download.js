@@ -71,6 +71,7 @@ async function fetchMedia(shortcode, originalUrl) {
   const likes = meta.likeCount || 0;
   const comments = meta.commentCount || 0;
   const cover = firstItem.pictureUrl || '';
+  const timestamp = meta.timestamp || meta.taken_at || firstItem.timestamp || firstItem.taken_at || null;
 
   let videoUrl = '';
   let images = [];
@@ -134,6 +135,7 @@ async function fetchMedia(shortcode, originalUrl) {
       type,
       likes,
       comments,
+      timestamp,
       downloadUrl: finalVideoUrl,
       music: null,
       images: finalImages,

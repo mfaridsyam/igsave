@@ -83,7 +83,8 @@ async function fetchStories(username) {
       isVideo,
       url: isVideo ? videoUrl : imageUrl,
       thumb: imageUrl,
-      timestamp: item.taken_at
+      timestamp: item.taken_at || null,
+      timestampLabel: item.taken_at
         ? new Date(item.taken_at * 1000).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
         : `Story ${i + 1}`,
     };
