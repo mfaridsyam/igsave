@@ -342,7 +342,6 @@ async function fetchStory() {
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch stories.');
-    currentStories = data.stories;
     renderStories(data);
   } catch (err) {
     errEl.textContent = err.message || 'Something went wrong.';
@@ -363,7 +362,8 @@ function renderStories(data) {
   av.src = data.avatar ? proxyImg(data.avatar, 'story_avatar.jpg') : '';
   av.style.display = data.avatar ? '' : 'none';
   grid.innerHTML = '';
-  data.stories.forEach((story, i) => {
+  currentStories = [...data.stories].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  currentStories.forEach((story, i) => {
     const item = document.createElement('div');
     item.className = 'img-item';
     const thumb = story.thumb ? proxyImg(story.thumb, `story_thumb_${i}.jpg`) : '';
