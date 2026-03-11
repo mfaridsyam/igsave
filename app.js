@@ -14,6 +14,7 @@ const resultCard = document.getElementById('resultCard');
 const progressBar = document.getElementById('progressBar');
 
 let currentImages = [];
+let currentMediaTimestamp = null;
 let currentUsername = 'unknown';
 let currentStories = [];
 let currentStoryUsername = '';
@@ -100,36 +101,56 @@ function formatNum(n) {
   return n.toString();
 }
 
-function formatTimestamp(ts) {
-  if (!ts) return '';
+function tsToDate(ts) {
+  if (!ts) return null;
   let date;
-  if (typeof ts === 'number' && ts < 1e12) {
-    date = new Date(ts * 1000);
+  if (typeof ts === 'number') {
+    date = ts < 1e12 ? new Date(ts * 1000) : new Date(ts);
+  } else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
+    const n = parseInt(ts);
+    date = n < 1e12 ? new Date(n * 1000) : new Date(n);
   } else {
     date = new Date(ts);
   }
-  if (isNaN(date.getTime())) return '';
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function formatTimestamp(ts) {
+  const date = tsToDate(ts);
+  if (!date) return '';
   return date.toLocaleString('id-ID', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
 }
 
-function formatStoryTime(ts) {
-  if (!ts) return '';
-  let date;
-  if (typeof ts === 'number' && ts < 1e12) {
-    date = new Date(ts * 1000);
-  } else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
-    date = new Date(parseInt(ts) * 1000);
-  } else {
-    date = new Date(ts);
+function formatStoryLabel(ts) {
+  const date = tsToDate(ts);
+  if (!date) return '';
+  const diff = Date.now() - date.getTime();
+  if (diff < 24 * 60 * 60 * 1000) {
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   }
-  if (isNaN(date.getTime())) return '';
-  return date.toLocaleString('id-ID', {
-    day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit'
-  });
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+}
+
+function formatFileDateTime(ts) {
+  const date = tsToDate(ts);
+  if (!date) return null;
+  const Y = date.getFullYear();
+  const M = String(date.getMonth() + 1).padStart(2, '0');
+  const D = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  return `${Y}${M}${D}_${h}${m}`;
+}
+
+function formatTodayDate() {
+  const d = new Date();
+  const Y = d.getFullYear();
+  const M = String(d.getMonth() + 1).padStart(2, '0');
+  const D = String(d.getDate()).padStart(2, '0');
+  return `${Y}${M}${D}`;
 }
 
 function resetUI() {
@@ -190,10 +211,11 @@ async function downloadAudio(btn) {
   finally { btn.disabled = false; btn.innerHTML = orig; hideProgress(); }
 }
 
-async function downloadSingleImage(url, index, isVideo) {
+async function downloadSingleImage(url, index, isVideo, ts) {
   const video = isVideo === true || isVideo === 'true';
   const ext = video ? 'mp4' : 'jpg';
-  const filename = `${currentUsername}_${video ? 'video' : 'image'}${index + 1}.${ext}`;
+  const dtStr = formatFileDateTime(ts) || formatFileDateTime(currentMediaTimestamp) || formatTodayDate();
+  const filename = `${currentUsername}_${dtStr}.${ext}`;
   showProgress();
   try {
     const r = await fetch(proxyUrl(url, filename));
@@ -209,13 +231,16 @@ async function downloadAllImages() {
   if (btn) { btn.textContent = 'Preparing...'; btn.disabled = true; }
   showProgress();
 
+  const postDtStr = formatFileDateTime(currentMediaTimestamp) || formatTodayDate();
   const files = currentImages.map((entry, i) => {
     const isObj = typeof entry === 'object' && entry !== null;
     const isVideo = isObj && entry.type === 'video';
     const url = isObj ? entry.url : entry;
     const ext = isVideo ? 'mp4' : 'jpg';
-    return { url, filename: `${currentUsername}_${isVideo ? 'video' : 'image'}${i + 1}.${ext}` };
+    const suffix = currentImages.length > 1 ? `_${i + 1}` : '';
+    return { url, filename: `${currentUsername}_${postDtStr}${suffix}.${ext}` };
   });
+  const zipName = `${currentUsername}_${formatTodayDate()}.zip`;
 
   try {
     const r = await fetch('/api/zip', {
@@ -224,7 +249,7 @@ async function downloadAllImages() {
       body: JSON.stringify({ files, username: currentUsername })
     });
     if (!r.ok) throw new Error();
-    saveBlobAsFile(await r.blob(), `${currentUsername}_files.zip`);
+    saveBlobAsFile(await r.blob(), zipName);
   } catch {
     for (let i = 0; i < files.length; i++) {
       await new Promise(r => setTimeout(r, 500));
@@ -253,7 +278,7 @@ function renderImages(images) {
     item.innerHTML = `
       <img src="${proxyImg(thumbUrl, `preview_${i+1}.jpg`)}" alt="${isVideo ? 'Video' : 'Photo'} ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>
       ${isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
-      <button class="img-overlay" onclick="downloadSingleImage('${mediaUrl}',${i},${isVideo})"><span>Save</span></button>
+      <button class="img-overlay" onclick="downloadSingleImage('${mediaUrl}',${i},${isVideo},${currentMediaTimestamp})"><span>Save</span></button>
     `;
     grid.appendChild(item);
   });
@@ -312,12 +337,13 @@ async function fetchMedia() {
 
     const dlVideo = document.getElementById('dlVideoBtn');
     dlVideo.style.display = v.downloadUrl ? 'flex' : 'none';
-    if (v.downloadUrl) { dlVideo.dataset.url = v.downloadUrl; dlVideo.dataset.filename = `${currentUsername}_${ts}.mp4`; }
+    if (v.downloadUrl) { dlVideo.dataset.url = v.downloadUrl; dlVideo.dataset.filename = `${currentUsername}_${formatFileDateTime(v.timestamp) || formatTodayDate()}.mp4`; }
 
     const dlMusic = document.getElementById('dlMusicBtn');
     dlMusic.style.display = v.music ? 'flex' : 'none';
-    if (v.music) { dlMusic.dataset.url = v.music; dlMusic.dataset.filename = `${currentUsername}_audio_${ts}.mp3`; }
+    if (v.music) { dlMusic.dataset.url = v.music; dlMusic.dataset.filename = `${currentUsername}_audio_${formatFileDateTime(v.timestamp) || formatTodayDate()}.mp3`; }
 
+    currentMediaTimestamp = v.timestamp || null;
     renderImages(v.images || []);
     resultCard.classList.add('active');
   } catch (err) {
@@ -378,7 +404,7 @@ function renderStories(data) {
     const item = document.createElement('div');
     item.className = 'img-item';
     const thumb = story.thumb ? proxyImg(story.thumb, `story_thumb_${i}.jpg`) : '';
-    const timeLabel = formatStoryTime(story.takenAt);
+    const timeLabel = formatStoryLabel(story.takenAt);
     item.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Story ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.6rem">${story.isVideo?'🎬':'🖼️'}</div>`}
       ${story.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
@@ -394,7 +420,8 @@ async function downloadStory(index) {
   const story = currentStories[index];
   if (!story?.url) return;
   const ext = story.isVideo ? 'mp4' : 'jpg';
-  const filename = `${currentStoryUsername}_story${index + 1}.${ext}`;
+  const dtStr = formatFileDateTime(story.takenAt) || formatTodayDate();
+  const filename = `${currentStoryUsername}_${dtStr}.${ext}`;
   showProgress();
   try { saveBlobAsFile(await (await fetch(proxyUrl(story.url, filename))).blob(), filename); }
   catch { window.open(proxyUrl(story.url, filename), '_blank'); }
@@ -408,10 +435,11 @@ async function downloadAllStories() {
   btn.textContent = 'Preparing...'; btn.disabled = true;
   showProgress();
 
-  const files = currentStories.map((s, i) => ({
-    url: s.url,
-    filename: `${currentStoryUsername}_story${i + 1}.${s.isVideo ? 'mp4' : 'jpg'}`
-  })).filter(f => f.url);
+  const files = currentStories.map((s) => {
+    const dtStr = formatFileDateTime(s.takenAt) || formatTodayDate();
+    return { url: s.url, filename: `${currentStoryUsername}_${dtStr}.${s.isVideo ? 'mp4' : 'jpg'}` };
+  }).filter(f => f.url);
+  const zipName = `${currentStoryUsername}_${formatTodayDate()}.zip`;
 
   try {
     const r = await fetch('/api/zip', {
@@ -420,7 +448,7 @@ async function downloadAllStories() {
       body: JSON.stringify({ files, username: currentStoryUsername })
     });
     if (r.ok) {
-      saveBlobAsFile(await r.blob(), `${currentStoryUsername}_stories.zip`);
+      saveBlobAsFile(await r.blob(), zipName);
     } else {
       throw new Error('ZIP failed');
     }
@@ -544,7 +572,7 @@ function renderHighlightGrid(index, items) {
     const div = document.createElement('div');
     div.className = 'img-item';
     const thumb = item.thumb ? proxyImg(item.thumb, `hl_${index}_${i}.jpg`) : '';
-    const timeLabel = formatStoryTime(item.takenAt || item.timestamp);
+    const timeLabel = formatStoryLabel(item.takenAt || item.timestamp);
     div.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Item ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.4rem">${item.isVideo?'🎬':'🖼️'}</div>`}
       ${item.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
@@ -560,7 +588,9 @@ async function downloadHighlightItem(hlIndex, itemIndex) {
   if (!item?.url) return;
   const hl = currentHighlights[hlIndex];
   const ext = item.isVideo ? 'mp4' : 'jpg';
-  const filename = `${hl.title || 'highlight'}_${itemIndex + 1}.${ext}`;
+  const dtStr = formatFileDateTime(item.takenAt) || formatTodayDate();
+  const safeTitle = (hl.title || 'highlight').replace(/[^a-zA-Z0-9_]/g, '_');
+  const filename = `${safeTitle}_${dtStr}.${ext}`;
   showProgress();
   try { saveBlobAsFile(await (await fetch(proxyUrl(item.url, filename))).blob(), filename); }
   catch { window.open(proxyUrl(item.url, filename), '_blank'); }
@@ -578,10 +608,11 @@ async function downloadAllHighlightItems(hlIndex) {
 
   const safeTitle = (hl.title || 'highlight').replace(/[^a-zA-Z0-9_]/g, '_');
 
-  const files = items.map((item, i) => ({
-    url: item.url,
-    filename: `${safeTitle}_${i + 1}.${item.isVideo ? 'mp4' : 'jpg'}`
-  })).filter(f => f.url);
+  const files = items.map((item) => {
+    const dtStr = formatFileDateTime(item.takenAt) || formatTodayDate();
+    return { url: item.url, filename: `${safeTitle}_${dtStr}.${item.isVideo ? 'mp4' : 'jpg'}` };
+  }).filter(f => f.url);
+  const zipName = `${safeTitle}_${formatTodayDate()}.zip`;
 
   try {
     const r = await fetch('/api/zip', {
@@ -590,7 +621,7 @@ async function downloadAllHighlightItems(hlIndex) {
       body: JSON.stringify({ files, username: safeTitle })
     });
     if (r.ok) {
-      saveBlobAsFile(await r.blob(), `${safeTitle}.zip`);
+      saveBlobAsFile(await r.blob(), zipName);
     } else {
       throw new Error('ZIP failed');
     }
