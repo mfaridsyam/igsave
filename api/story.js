@@ -13,11 +13,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { username, sessionid } = req.body;
+  const { username } = req.body;
   if (!username) return res.status(400).json({ error: 'Username is required.' });
 
   try {
-    const result = await fetchStories(username.trim().replace('@', ''), sessionid || null);
+    const result = await fetchStories(username.trim().replace('@', ''));
     return res.status(200).json(result);
   } catch (e) {
     console.error('Story error:', e.message);
@@ -49,15 +49,11 @@ async function ig120(endpoint, body) {
   throw lastError || new Error('All API keys exhausted');
 }
 
-async function fetchStories(username, sessionid) {
-  const body = sessionid ? { username, sessionid } : { username };
-  const raw = await ig120('stories', body);
+async function fetchStories(username) {
+  const raw = await ig120('stories', { username });
 
   if (raw?.response_type === 'private page' || raw?.success === false) {
-    if (!sessionid) {
-      throw new Error('This account is private. Set your Session ID via the "Private Account Access" button first.');
-    }
-    throw new Error('Cannot access this private account. Make sure the Session ID belongs to an account that follows this user.');
+    throw new Error('This account is private. Only public accounts are supported.');
   }
 
   let items =
@@ -82,14 +78,13 @@ async function fetchStories(username, sessionid) {
     const imageUrl =
       item.image_versions2?.candidates?.[0]?.url ||
       item.display_url || item.thumbnail_url || '';
+    const takenAt = item.taken_at || null;
     return {
       id: item.id || i,
       isVideo,
       url: isVideo ? videoUrl : imageUrl,
       thumb: imageUrl,
-      timestamp: item.taken_at
-        ? new Date(item.taken_at * 1000).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-        : `Story ${i + 1}`,
+      takenAt,
     };
   }).filter(s => s.url);
 

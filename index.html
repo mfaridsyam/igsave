@@ -73,6 +73,7 @@
               <span class="stat" id="resLikes"></span>
               <span class="stat" id="resComments"></span>
             </div>
+            <div class="result-date" id="resDate" style="display:none"></div>
           </div>
         </div>
       </div>
@@ -148,7 +149,6 @@
   </div>
 
   <div class="howto-section">
-
     <div class="howto-cards">
       <div class="howto-card">
         <div class="howto-card-title">Reels & Videos</div>
@@ -161,64 +161,6 @@
       <div class="howto-card">
         <div class="howto-card-title">Stories & Highlights</div>
         <div class="howto-card-desc">Enter a public account's username to browse and download their active stories and highlights.</div>
-      </div>
-    </div>
-
-    <div class="private-access-wrap">
-      <button class="btn-private-toggle" id="btnPrivateToggle" onclick="openSessionModal()">
-        <span class="private-lock-icon">🔒</span>
-        <span id="btnPrivateLabel">Private Account Access</span>
-        <span class="private-status-dot" id="privateStatusDot"></span>
-      </button>
-      <div class="private-hint" id="privateHint">Set your Session ID to access private accounts you follow</div>
-    </div>
-
-  </div>
-
-  <div class="modal-overlay" id="sessionModal" onclick="closeSessionModalOutside(event)">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title">🔒 Private Account Access</div>
-        <button class="modal-close" onclick="closeSessionModal()">✕</button>
-      </div>
-      <div class="modal-tabs">
-        <button class="modal-tab active" id="tabLogin" onclick="switchModalTab('login')">Login Instagram</button>
-        <button class="modal-tab" id="tabSession" onclick="switchModalTab('session')">Paste Session ID</button>
-      </div>
-      <div class="modal-body" id="panelLogin">
-        <p class="modal-desc">Login dengan akun Instagram yang sudah follow akun private. Username & password <strong>tidak disimpan</strong> di server.</p>
-        <div class="modal-field">
-          <label class="modal-label">Username Instagram</label>
-          <input type="text" id="igUsername" class="modal-input" placeholder="contoh: myaccount" autocomplete="off" spellcheck="false" autocapitalize="none"/>
-        </div>
-        <div class="modal-field" style="margin-top:10px">
-          <label class="modal-label">Password</label>
-          <div class="modal-input-row">
-            <input type="password" id="igPassword" class="modal-input" placeholder="Password Instagram kamu" autocomplete="off"/>
-            <button class="modal-eye" onclick="togglePasswordVisibility()" id="eyePassBtn">👁</button>
-          </div>
-        </div>
-        <div class="modal-warn">⚠️ Jika ada 2FA aktif, gunakan tab "Paste Session ID".</div>
-        <div class="modal-status" id="loginStatus"></div>
-        <button class="btn-modal-save" style="width:100%;margin-top:12px" id="btnDoLogin" onclick="doLogin()">
-          <span id="loginBtnText">Login & Ambil Session</span>
-        </button>
-      </div>
-      <div class="modal-body" id="panelSession" style="display:none">
-        <p class="modal-desc">Paste Session ID dari akun Instagram yang sudah follow akun private yang ingin diakses.</p>
-        <div class="modal-field">
-          <label class="modal-label">Session ID</label>
-          <div class="modal-input-row">
-            <input type="password" id="sessionIdInput" class="modal-input" placeholder="Paste sessionid disini..." autocomplete="off" spellcheck="false"/>
-            <button class="modal-eye" onclick="toggleSessionVisibility()" id="eyeBtn">👁</button>
-          </div>
-          <div class="modal-hint">DevTools → Application → Cookies → instagram.com → sessionid</div>
-        </div>
-        <div class="modal-status" id="modalStatus"></div>
-        <div class="modal-footer-inline">
-          <button class="btn-modal-clear" onclick="clearSession()">Clear</button>
-          <button class="btn-modal-save" onclick="saveSession()">Save & Use</button>
-        </div>
       </div>
     </div>
   </div>

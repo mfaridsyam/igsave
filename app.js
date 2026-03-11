@@ -20,139 +20,6 @@ let currentStoryUsername = '';
 let currentHighlights = [];
 let currentHighlightItems = {};
 let deferredPrompt = null;
-let activeSessionId = '';
-
-function openSessionModal() {
-  const modal = document.getElementById('sessionModal');
-  modal.classList.add('open');
-  switchModalTab('login');
-  document.getElementById('loginStatus').textContent = '';
-  document.getElementById('loginStatus').className = 'modal-status';
-  setTimeout(() => document.getElementById('igUsername')?.focus(), 100);
-}
-
-function switchModalTab(tab) {
-  const isLogin = tab === 'login';
-  document.getElementById('tabLogin').classList.toggle('active', isLogin);
-  document.getElementById('tabSession').classList.toggle('active', !isLogin);
-  document.getElementById('panelLogin').style.display = isLogin ? '' : 'none';
-  document.getElementById('panelSession').style.display = isLogin ? 'none' : '';
-}
-
-function togglePasswordVisibility() {
-  const input = document.getElementById('igPassword');
-  const btn = document.getElementById('eyePassBtn');
-  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
-  else { input.type = 'password'; btn.textContent = '👁'; }
-}
-
-async function doLogin() {
-  const username = document.getElementById('igUsername').value.trim();
-  const password = document.getElementById('igPassword').value;
-  const statusEl = document.getElementById('loginStatus');
-  const btn = document.getElementById('btnDoLogin');
-  const btnText = document.getElementById('loginBtnText');
-
-  if (!username || !password) {
-    statusEl.textContent = 'Isi username dan password dulu.';
-    statusEl.className = 'modal-status err';
-    return;
-  }
-
-  btn.disabled = true;
-  btnText.innerHTML = '<span class="spin"></span> Logging in...';
-  statusEl.textContent = '';
-  statusEl.className = 'modal-status';
-
-  try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Login gagal. Coba lagi.');
-    }
-
-    activeSessionId = data.sessionid;
-    updatePrivateBtn();
-
-    document.getElementById('igUsername').value = '';
-    document.getElementById('igPassword').value = '';
-
-    statusEl.textContent = `✓ Login berhasil sebagai @${username}! Session aktif.`;
-    statusEl.className = 'modal-status ok';
-    setTimeout(() => closeSessionModal(), 1800);
-
-  } catch (err) {
-    statusEl.textContent = err.message;
-    statusEl.className = 'modal-status err';
-  } finally {
-    btn.disabled = false;
-    btnText.textContent = 'Login & Ambil Session';
-  }
-}
-
-function closeSessionModal() {
-  document.getElementById('sessionModal').classList.remove('open');
-}
-
-function closeSessionModalOutside(e) {
-  if (e.target.id === 'sessionModal') closeSessionModal();
-}
-
-function toggleSessionVisibility() {
-  const input = document.getElementById('sessionIdInput');
-  const btn = document.getElementById('eyeBtn');
-  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
-  else { input.type = 'password'; btn.textContent = '👁'; }
-}
-
-function saveSession() {
-  const val = document.getElementById('sessionIdInput').value.trim();
-  const statusEl = document.getElementById('modalStatus');
-  if (!val) {
-    statusEl.textContent = 'Please enter a Session ID.';
-    statusEl.className = 'modal-status err';
-    return;
-  }
-  activeSessionId = val;
-  updatePrivateBtn();
-  statusEl.textContent = '✓ Session ID saved! You can now search private accounts.';
-  statusEl.className = 'modal-status ok';
-  setTimeout(() => closeSessionModal(), 1400);
-}
-
-function clearSession() {
-  activeSessionId = '';
-  document.getElementById('sessionIdInput').value = '';
-  document.getElementById('modalStatus').textContent = '';
-  updatePrivateBtn();
-}
-
-function updatePrivateBtn() {
-  const btn = document.getElementById('btnPrivateToggle');
-  const dot = document.getElementById('privateStatusDot');
-  const label = document.getElementById('btnPrivateLabel');
-  const hint = document.getElementById('privateHint');
-  if (activeSessionId) {
-    btn.classList.add('active');
-    dot.classList.add('on');
-    label.textContent = 'Private Access: ON';
-    hint.textContent = 'Session ID is active. You can search private accounts you follow.';
-  } else {
-    btn.classList.remove('active');
-    dot.classList.remove('on');
-    label.textContent = 'Private Account Access';
-    hint.textContent = 'Set your Session ID to access private accounts you follow';
-  }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeSessionModal();
-});
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
@@ -231,6 +98,38 @@ function formatNum(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
   return n.toString();
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '';
+  let date;
+  if (typeof ts === 'number' && ts < 1e12) {
+    date = new Date(ts * 1000);
+  } else {
+    date = new Date(ts);
+  }
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function formatStoryTime(ts) {
+  if (!ts) return '';
+  let date;
+  if (typeof ts === 'number' && ts < 1e12) {
+    date = new Date(ts * 1000);
+  } else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
+    date = new Date(parseInt(ts) * 1000);
+  } else {
+    date = new Date(ts);
+  }
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleString('id-ID', {
+    day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit'
+  });
 }
 
 function resetUI() {
@@ -389,6 +288,18 @@ async function fetchMedia() {
     document.getElementById('resTitle').textContent = v.title || '';
     document.getElementById('resType').textContent = v.type || '';
 
+    const tsFormatted = formatTimestamp(v.timestamp);
+    let resDateEl = document.getElementById('resDate');
+    if (!resDateEl) {
+      resDateEl = document.createElement('div');
+      resDateEl.id = 'resDate';
+      resDateEl.className = 'result-date';
+      const statsEl = document.querySelector('.result-stats');
+      if (statsEl) statsEl.insertAdjacentElement('afterend', resDateEl);
+    }
+    resDateEl.textContent = tsFormatted ? '📅 ' + tsFormatted : '';
+    resDateEl.style.display = tsFormatted ? '' : 'none';
+
     const likesEl = document.getElementById('resLikes');
     const commentsEl = document.getElementById('resComments');
     if (v.likes || v.comments) {
@@ -428,7 +339,6 @@ async function fetchStory() {
   errEl.style.display = 'none';
   resEl.style.display = 'none';
   const btn = document.getElementById('fetchStoryBtn');
-  const orig = btn.innerHTML;
   btn.disabled = true;
   document.getElementById('storyBtnText').innerHTML = '<span class="spin"></span>';
   showProgress();
@@ -438,10 +348,11 @@ async function fetchStory() {
     const res = await fetch('/api/story', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, sessionid: activeSessionId || undefined })
+      body: JSON.stringify({ username })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch stories.');
+    data.stories.sort((a, b) => (b.takenAt || 0) - (a.takenAt || 0));
     currentStories = data.stories;
     renderStories(data);
   } catch (err) {
@@ -467,9 +378,11 @@ function renderStories(data) {
     const item = document.createElement('div');
     item.className = 'img-item';
     const thumb = story.thumb ? proxyImg(story.thumb, `story_thumb_${i}.jpg`) : '';
+    const timeLabel = formatStoryTime(story.takenAt);
     item.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Story ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.6rem">${story.isVideo?'🎬':'🖼️'}</div>`}
       ${story.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
+      ${timeLabel ? `<span class="story-time">${timeLabel}</span>` : ''}
       <button class="img-overlay" onclick="downloadStory(${i})"><span>Save</span></button>
     `;
     grid.appendChild(item);
@@ -538,7 +451,7 @@ async function fetchHighlight() {
     const res = await fetch('/api/highlight', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, sessionid: activeSessionId || undefined })
+      body: JSON.stringify({ username })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch highlights.');
@@ -615,6 +528,7 @@ async function toggleHighlight(index) {
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load highlight.');
+    data.items.sort((a, b) => (b.takenAt || b.timestamp || 0) - (a.takenAt || a.timestamp || 0));
     currentHighlightItems[index] = data.items;
     renderHighlightGrid(index, data.items);
   } catch (err) {
@@ -630,9 +544,11 @@ function renderHighlightGrid(index, items) {
     const div = document.createElement('div');
     div.className = 'img-item';
     const thumb = item.thumb ? proxyImg(item.thumb, `hl_${index}_${i}.jpg`) : '';
+    const timeLabel = formatStoryTime(item.takenAt || item.timestamp);
     div.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Item ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.4rem">${item.isVideo?'🎬':'🖼️'}</div>`}
       ${item.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
+      ${timeLabel ? `<span class="story-time">${timeLabel}</span>` : ''}
       <button class="img-overlay" onclick="downloadHighlightItem(${index},${i})"><span>Save</span></button>
     `;
     grid.appendChild(div);
