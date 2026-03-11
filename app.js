@@ -530,7 +530,9 @@ function renderHighlightGrid(index, items) {
   const grid = document.getElementById(`hlGrid_${index}`);
   const hl = currentHighlights[index];
   grid.innerHTML = '';
-  items.forEach((item, i) => {
+  const sorted = [...items].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  currentHighlightItems[index] = sorted;
+  sorted.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'img-item';
     const thumb = item.thumb ? proxyImg(item.thumb, `hl_${index}_${i}.jpg`) : '';
