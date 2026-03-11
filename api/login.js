@@ -11,8 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sessionid = await igLogin(username.trim(), password);
-
+    const sessionid = await igLogin(username.trim().toLowerCase(), password);
     return res.status(200).json({ success: true, sessionid });
   } catch (e) {
     console.error('Login error:', e.message);
@@ -26,9 +25,9 @@ async function igLogin(username, password) {
   const initRes = await fetch(`${IG_BASE}/accounts/login/`, {
     method: 'GET',
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8',
       'Accept-Encoding': 'gzip, deflate, br',
       'Connection': 'keep-alive',
       'Upgrade-Insecure-Requests': '1',
@@ -36,37 +35,45 @@ async function igLogin(username, password) {
     redirect: 'follow',
   });
 
-  if (!initRes.ok) throw new Error('Failed to reach Instagram. Try again later.');
+  if (!initRes.ok) throw new Error('Tidak bisa terhubung ke Instagram. Coba lagi nanti.');
 
+  const html = await initRes.text();
   const rawCookies = initRes.headers.get('set-cookie') || '';
   const cookieMap = parseCookies(rawCookies);
-  const csrftoken = cookieMap['csrftoken'] || '';
-  const mid = cookieMap['mid'] || '';
 
-  if (!csrftoken) throw new Error('Could not get CSRF token. Instagram may be blocking the request.');
+  let csrftoken = cookieMap['csrftoken'] || '';
+  if (!csrftoken) {
+    const m = html.match(/"csrf_token":"([^"]+)"/);
+    if (m) csrftoken = m[1];
+  }
+  if (!csrftoken) {
+    const m2 = html.match(/csrftoken=([^;,\s"]+)/);
+    if (m2) csrftoken = m2[1];
+  }
 
-  const cookieStr = Object.entries(cookieMap)
-    .map(([k, v]) => `${k}=${v}`)
-    .join('; ');
+  if (!csrftoken) throw new Error('Gagal mendapatkan token dari Instagram. Instagram mungkin memblokir request ini.');
+
+  const cookieStr = Object.entries(cookieMap).map(([k,v]) => `${k}=${v}`).join('; ');
 
   const loginRes = await fetch(`${IG_BASE}/api/v1/web/accounts/login/ajax/`, {
     method: 'POST',
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
       'Accept': '*/*',
-      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8',
       'Content-Type': 'application/x-www-form-urlencoded',
       'X-CSRFToken': csrftoken,
       'X-Instagram-AJAX': '1',
       'X-Requested-With': 'XMLHttpRequest',
+      'X-IG-App-ID': '936619743392459',
       'Referer': `${IG_BASE}/accounts/login/`,
       'Origin': IG_BASE,
       'Cookie': cookieStr,
     },
     body: new URLSearchParams({
       username,
-      enc_password: `#PWD_INSTAGRAM_BROWSER:0:${Date.now()}:${password}`,
-      queryParams: '{}',
+      enc_password: `#PWD_INSTAGRAM_BROWSER:0:${Math.floor(Date.now()/1000)}:${password}`,
+      queryParams: JSON.stringify({ next: '/' }),
       optIntoOneTap: 'false',
       stopDeletionNonce: '',
       trustedDeviceRecords: '{}',
@@ -74,57 +81,49 @@ async function igLogin(username, password) {
     redirect: 'manual',
   });
 
-  const loginCookies = loginRes.headers.get('set-cookie') || '';
-  const loginCookieMap = parseCookies(loginCookies);
+  const loginRawCookies = loginRes.headers.get('set-cookie') || '';
+  const loginCookieMap = parseCookies(loginRawCookies);
+  const allCookies = { ...cookieMap, ...loginCookieMap };
 
   let data = {};
-  try {
-    const text = await loginRes.text();
-    data = JSON.parse(text);
-  } catch (e) {}
+  try { data = JSON.parse(await loginRes.text()); } catch (e) {}
+
+  console.log('[Login] status:', loginRes.status, 'authenticated:', data.authenticated, 'keys:', Object.keys(data).join(','));
 
   if (data.two_factor_required) {
-    throw new Error('Two-factor authentication is enabled. Please disable 2FA temporarily or use Session ID manually.');
+    throw new Error('Akun ini menggunakan 2FA (Two-Factor Authentication). Gunakan tab "Paste Session ID" — login manual di browser lalu copy session ID-nya.');
   }
-
   if (data.checkpoint_url || data.action === 'checkpoint') {
-    throw new Error('Instagram requires verification (checkpoint). Please login manually in browser and copy the Session ID instead.');
+    throw new Error('Instagram meminta verifikasi tambahan. Login manual di browser Instagram kamu, lalu gunakan tab "Paste Session ID" untuk copy session ID-nya.');
+  }
+  if (data.message === 'feedback_required' || data.spam === true) {
+    throw new Error('Instagram memblokir percobaan login ini. Coba login manual di browser dan gunakan "Paste Session ID".');
+  }
+  if (data.user === false || data.authenticated === false) {
+    throw new Error('Username atau password salah. Periksa kembali dan coba lagi.');
   }
 
-  if (data.message === 'feedback_required') {
-    throw new Error('Instagram blocked this login attempt. Please try logging in via browser and copy Session ID manually.');
+  const sessionid = allCookies['sessionid'] || '';
+  if (sessionid) return sessionid;
+
+  if (data.authenticated === true) {
+    throw new Error('Login berhasil tapi session ID tidak terbaca. Gunakan tab "Paste Session ID" secara manual dari browser.');
   }
 
-  const sessionid = loginCookieMap['sessionid'] || '';
-
-  if (!sessionid && data.authenticated === false) {
-    throw new Error('Wrong username or password. Please check and try again.');
-  }
-
-  if (!sessionid) {
-    const allCookies = { ...cookieMap, ...loginCookieMap };
-    const sid = allCookies['sessionid'] || '';
-    if (!sid) throw new Error('Login failed. Instagram may have flagged this request. Try again later or use Session ID manually.');
-    return sid;
-  }
-
-  return sessionid;
+  throw new Error('Login gagal. Instagram memblokir request dari server ini. Gunakan tab "Paste Session ID" sebagai alternatif.');
 }
 
-function parseCookies(rawCookies) {
+function parseCookies(raw) {
   const result = {};
-  if (!rawCookies) return result;
-  const parts = rawCookies.split(/,(?=[^ ])|[\n]/);
-  for (const part of parts) {
-    const segments = part.trim().split(';');
-    const first = segments[0].trim();
-    const eqIdx = first.indexOf('=');
-    if (eqIdx > 0) {
-      const key = first.substring(0, eqIdx).trim();
-      const val = first.substring(eqIdx + 1).trim();
-      if (key && val && !['path', 'domain', 'expires', 'max-age', 'samesite', 'secure', 'httponly'].includes(key.toLowerCase())) {
-        result[key] = val;
-      }
+  if (!raw) return result;
+  const skip = new Set(['path','domain','expires','max-age','samesite','secure','httponly']);
+  for (const part of raw.split(/,(?=[^ ,])|[\r\n]+/)) {
+    const first = part.trim().split(';')[0].trim();
+    const eq = first.indexOf('=');
+    if (eq > 0) {
+      const k = first.slice(0, eq).trim();
+      const v = first.slice(eq + 1).trim();
+      if (k && v && !skip.has(k.toLowerCase())) result[k] = v;
     }
   }
   return result;
