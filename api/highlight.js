@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { username, highlightId, sessionid } = req.body;
+  const { username, highlightId } = req.body;
 
   try {
     if (highlightId) {
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       return res.status(200).json(items);
     }
     if (!username) return res.status(400).json({ error: 'Username is required.' });
-    const result = await fetchHighlights(username.trim().replace('@', ''), sessionid || null);
+    const result = await fetchHighlights(username.trim().replace('@', ''));
     return res.status(200).json(result);
   } catch (e) {
     console.error('Highlight error:', e.message);
@@ -53,15 +53,11 @@ async function ig120(endpoint, body) {
   throw lastError || new Error('All API keys exhausted');
 }
 
-async function fetchHighlights(username, sessionid) {
-  const body = sessionid ? { username, sessionid } : { username };
-  const raw = await ig120('highlights', body);
+async function fetchHighlights(username) {
+  const raw = await ig120('highlights', { username });
 
   if (raw?.response_type === 'private page' || raw?.success === false) {
-    if (!sessionid) {
-      throw new Error('This account is private. Set your Session ID via the "Private Account Access" button first.');
-    }
-    throw new Error('Cannot access this private account. Make sure the Session ID belongs to an account that follows this user.');
+    throw new Error('This account is private. Highlights are only available for public accounts.');
   }
 
   let tray =
@@ -132,11 +128,16 @@ async function fetchHighlightItems(highlightId) {
       item.display_url ||
       item.thumbnail_url ||
       '';
+    const timestamp =
+      item.taken_at || item.timestamp || item.takenAt ||
+      item.created_time || item.createdTime ||
+      item.date || item.posted_at || null;
     return {
       id: item.id || i,
       isVideo,
       url: isVideo ? videoUrl : imageUrl,
       thumb: imageUrl,
+      timestamp,
     };
   }).filter(i => i.url);
 

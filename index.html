@@ -73,6 +73,7 @@
               <span class="stat" id="resLikes"></span>
               <span class="stat" id="resComments"></span>
             </div>
+            <div class="result-timestamp" id="resTimestamp" style="display:none"></div>
           </div>
         </div>
       </div>
@@ -164,40 +165,7 @@
       </div>
     </div>
 
-    <div class="private-access-wrap">
-      <button class="btn-private-toggle" id="btnPrivateToggle" onclick="openSessionModal()">
-        <span class="private-lock-icon">🔒</span>
-        <span id="btnPrivateLabel">Private Account Access</span>
-        <span class="private-status-dot" id="privateStatusDot"></span>
-      </button>
-      <div class="private-hint" id="privateHint">Set your Session ID to access private accounts you follow</div>
-    </div>
 
-  </div>
-
-  <div class="modal-overlay" id="sessionModal" onclick="closeSessionModalOutside(event)">
-    <div class="modal-box">
-      <div class="modal-header">
-        <div class="modal-title">🔒 Private Account Access</div>
-        <button class="modal-close" onclick="closeSessionModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-desc">Enter the Session ID of an Instagram account that already follows the private account you want to access.</p>
-        <div class="modal-field">
-          <label class="modal-label">Session ID</label>
-          <div class="modal-input-row">
-            <input type="password" id="sessionIdInput" class="modal-input" placeholder="Paste your sessionid here..." autocomplete="off" spellcheck="false"/>
-            <button class="modal-eye" onclick="toggleSessionVisibility()" id="eyeBtn">👁</button>
-          </div>
-          <div class="modal-hint">Find it in browser DevTools → Application → Cookies → instagram.com → sessionid</div>
-        </div>
-        <div class="modal-status" id="modalStatus"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-modal-clear" onclick="clearSession()">Clear</button>
-        <button class="btn-modal-save" onclick="saveSession()">Save & Use</button>
-      </div>
-    </div>
   </div>
 
   <footer>
