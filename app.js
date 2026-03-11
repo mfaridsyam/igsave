@@ -20,6 +20,139 @@ let currentStoryUsername = '';
 let currentHighlights = [];
 let currentHighlightItems = {};
 let deferredPrompt = null;
+let activeSessionId = '';
+
+function openSessionModal() {
+  const modal = document.getElementById('sessionModal');
+  modal.classList.add('open');
+  switchModalTab('login');
+  document.getElementById('loginStatus').textContent = '';
+  document.getElementById('loginStatus').className = 'modal-status';
+  setTimeout(() => document.getElementById('igUsername')?.focus(), 100);
+}
+
+function switchModalTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabSession').classList.toggle('active', !isLogin);
+  document.getElementById('panelLogin').style.display = isLogin ? '' : 'none';
+  document.getElementById('panelSession').style.display = isLogin ? 'none' : '';
+}
+
+function togglePasswordVisibility() {
+  const input = document.getElementById('igPassword');
+  const btn = document.getElementById('eyePassBtn');
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+}
+
+async function doLogin() {
+  const username = document.getElementById('igUsername').value.trim();
+  const password = document.getElementById('igPassword').value;
+  const statusEl = document.getElementById('loginStatus');
+  const btn = document.getElementById('btnDoLogin');
+  const btnText = document.getElementById('loginBtnText');
+
+  if (!username || !password) {
+    statusEl.textContent = 'Isi username dan password dulu.';
+    statusEl.className = 'modal-status err';
+    return;
+  }
+
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spin"></span> Logging in...';
+  statusEl.textContent = '';
+  statusEl.className = 'modal-status';
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Login gagal. Coba lagi.');
+    }
+
+    activeSessionId = data.sessionid;
+    updatePrivateBtn();
+
+    document.getElementById('igUsername').value = '';
+    document.getElementById('igPassword').value = '';
+
+    statusEl.textContent = `✓ Login berhasil sebagai @${username}! Session aktif.`;
+    statusEl.className = 'modal-status ok';
+    setTimeout(() => closeSessionModal(), 1800);
+
+  } catch (err) {
+    statusEl.textContent = err.message;
+    statusEl.className = 'modal-status err';
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = 'Login & Ambil Session';
+  }
+}
+
+function closeSessionModal() {
+  document.getElementById('sessionModal').classList.remove('open');
+}
+
+function closeSessionModalOutside(e) {
+  if (e.target.id === 'sessionModal') closeSessionModal();
+}
+
+function toggleSessionVisibility() {
+  const input = document.getElementById('sessionIdInput');
+  const btn = document.getElementById('eyeBtn');
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+}
+
+function saveSession() {
+  const val = document.getElementById('sessionIdInput').value.trim();
+  const statusEl = document.getElementById('modalStatus');
+  if (!val) {
+    statusEl.textContent = 'Please enter a Session ID.';
+    statusEl.className = 'modal-status err';
+    return;
+  }
+  activeSessionId = val;
+  updatePrivateBtn();
+  statusEl.textContent = '✓ Session ID saved! You can now search private accounts.';
+  statusEl.className = 'modal-status ok';
+  setTimeout(() => closeSessionModal(), 1400);
+}
+
+function clearSession() {
+  activeSessionId = '';
+  document.getElementById('sessionIdInput').value = '';
+  document.getElementById('modalStatus').textContent = '';
+  updatePrivateBtn();
+}
+
+function updatePrivateBtn() {
+  const btn = document.getElementById('btnPrivateToggle');
+  const dot = document.getElementById('privateStatusDot');
+  const label = document.getElementById('btnPrivateLabel');
+  const hint = document.getElementById('privateHint');
+  if (activeSessionId) {
+    btn.classList.add('active');
+    dot.classList.add('on');
+    label.textContent = 'Private Access: ON';
+    hint.textContent = 'Session ID is active. You can search private accounts you follow.';
+  } else {
+    btn.classList.remove('active');
+    dot.classList.remove('on');
+    label.textContent = 'Private Account Access';
+    hint.textContent = 'Set your Session ID to access private accounts you follow';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeSessionModal();
+});
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
@@ -98,28 +231,6 @@ function formatNum(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
   return n.toString();
-}
-
-function formatTimeAgo(timestamp) {
-  if (!timestamp) return '';
-  const ts = timestamp > 1e10 ? timestamp : timestamp * 1000;
-  const date = new Date(ts);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  let ago = '';
-  if (diffSec < 60) ago = `${diffSec}s ago`;
-  else if (diffMin < 60) ago = `${diffMin}m ago`;
-  else if (diffHour < 24) ago = `${diffHour}h ago`;
-  else if (diffDay < 7) ago = `${diffDay}d ago`;
-  else ago = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: diffDay > 365 ? 'numeric' : undefined });
-
-  const timeStr = date.toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  return { ago, full: timeStr };
 }
 
 function resetUI() {
@@ -288,17 +399,6 @@ async function fetchMedia() {
       likesEl.style.display = commentsEl.style.display = 'none';
     }
 
-    const tsEl = document.getElementById('resTimestamp');
-    if (tsEl) {
-      if (v.timestamp) {
-        const t = formatTimeAgo(v.timestamp);
-        tsEl.innerHTML = `<span class="ts-ago">${t.ago}</span> <span class="ts-full">· ${t.full}</span>`;
-        tsEl.style.display = '';
-      } else {
-        tsEl.style.display = 'none';
-      }
-    }
-
     const dlVideo = document.getElementById('dlVideoBtn');
     dlVideo.style.display = v.downloadUrl ? 'flex' : 'none';
     if (v.downloadUrl) { dlVideo.dataset.url = v.downloadUrl; dlVideo.dataset.filename = `${currentUsername}_${ts}.mp4`; }
@@ -338,10 +438,11 @@ async function fetchStory() {
     const res = await fetch('/api/story', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ username, sessionid: activeSessionId || undefined })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch stories.');
+    currentStories = data.stories;
     renderStories(data);
   } catch (err) {
     errEl.textContent = err.message || 'Something went wrong.';
@@ -362,18 +463,13 @@ function renderStories(data) {
   av.src = data.avatar ? proxyImg(data.avatar, 'story_avatar.jpg') : '';
   av.style.display = data.avatar ? '' : 'none';
   grid.innerHTML = '';
-  currentStories = [...data.stories].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  currentStories.forEach((story, i) => {
+  data.stories.forEach((story, i) => {
     const item = document.createElement('div');
     item.className = 'img-item';
     const thumb = story.thumb ? proxyImg(story.thumb, `story_thumb_${i}.jpg`) : '';
-    const timeInfo = story.timestamp ? formatTimeAgo(story.timestamp) : null;
-    const timeLabel = timeInfo ? timeInfo.ago : (story.timestampLabel || `Story ${i+1}`);
-    const timeFull = timeInfo ? timeInfo.full : '';
     item.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Story ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.6rem">${story.isVideo?'🎬':'🖼️'}</div>`}
       ${story.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
-      <div class="story-timestamp" title="${timeFull}">${timeLabel}</div>
       <button class="img-overlay" onclick="downloadStory(${i})"><span>Save</span></button>
     `;
     grid.appendChild(item);
@@ -442,7 +538,7 @@ async function fetchHighlight() {
     const res = await fetch('/api/highlight', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ username, sessionid: activeSessionId || undefined })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch highlights.');
@@ -530,19 +626,13 @@ function renderHighlightGrid(index, items) {
   const grid = document.getElementById(`hlGrid_${index}`);
   const hl = currentHighlights[index];
   grid.innerHTML = '';
-  const sorted = [...items].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  currentHighlightItems[index] = sorted;
-  sorted.forEach((item, i) => {
+  items.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'img-item';
     const thumb = item.thumb ? proxyImg(item.thumb, `hl_${index}_${i}.jpg`) : '';
-    const timeInfo = item.timestamp ? formatTimeAgo(item.timestamp) : null;
-    const timeLabel = timeInfo ? timeInfo.ago : '';
-    const timeFull = timeInfo ? timeInfo.full : '';
     div.innerHTML = `
       ${thumb ? `<img src="${thumb}" alt="Item ${i+1}" loading="lazy" onerror="this.parentElement.style.background='#f0e8f5'"/>` : `<div style="width:100%;height:100%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.4rem">${item.isVideo?'🎬':'🖼️'}</div>`}
       ${item.isVideo ? '<span class="thumb-type">VIDEO</span>' : ''}
-      ${timeLabel ? `<div class="story-timestamp" title="${timeFull}">${timeLabel}</div>` : ''}
       <button class="img-overlay" onclick="downloadHighlightItem(${index},${i})"><span>Save</span></button>
     `;
     grid.appendChild(div);
