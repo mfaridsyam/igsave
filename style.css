@@ -66,16 +66,9 @@ body {
 }
 
 .container {
-  max-width: 960px;
+  max-width: 620px;
   margin: 0 auto;
-  padding: 0 32px;
-}
-
-@media (max-width: 768px) {
-  .container {
-    max-width: 620px;
-    padding: 0 20px;
-  }
+  padding: 0 20px;
 }
 
 nav {
@@ -1078,76 +1071,6 @@ footer a:hover { color: var(--text); }
 @media (max-width: 520px) {
   .howto-cards { grid-template-columns: 1fr; }
   .sh-tabs { flex-direction: row; }
-}
-
-@media (min-width: 769px) {
-  nav {
-    padding: 40px 0 0;
-  }
-
-  .logo {
-    font-size: 1.2rem;
-  }
-
-  .hero {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 52px;
-    align-items: start;
-    padding: 56px 0 52px;
-  }
-
-  h1 {
-    font-size: clamp(2.2rem, 2.8vw, 3.4rem);
-    grid-column: 1;
-  }
-
-  .hero-sub {
-    grid-column: 1;
-  }
-
-  .input-wrap {
-    grid-column: 2;
-    grid-row: 1 / span 5;
-  }
-
-  .error-box {
-    grid-column: 2;
-  }
-
-  .result-card {
-    grid-column: 2;
-  }
-
-  .sh-tabs {
-    grid-column: 2;
-  }
-
-  #sectionStory,
-  #sectionHighlight {
-    grid-column: 2;
-  }
-
-  .howto-section {
-    margin: 36px 0 0;
-  }
-
-  .howto-cards {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-
-  .howto-card {
-    padding: 20px 16px;
-  }
-
-  .howto-card-title {
-    font-size: 0.88rem;
-  }
-
-  .howto-card-desc {
-    font-size: 0.75rem;
-  }
 }
 
 .private-access-wrap {
