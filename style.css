@@ -79,13 +79,20 @@ nav {
 }
 
 .logo {
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.3px;
-  background: linear-gradient(90deg, var(--ig-1), var(--ig-2), var(--ig-3));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: 32px;
+  width: auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
 }
 
 .logo-dot {
